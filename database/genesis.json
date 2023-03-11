@@ -1,0 +1,10 @@
+{
+    "genesis_time": "2023-03-11T00:00:00.000000000Z",
+    "chain_id": "the-gamma-ledger",
+    "balances": {
+    "admin": 1000000,
+    "user1": 100,
+    "user2": 100
+    }
+}
+    
