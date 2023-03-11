@@ -23,7 +23,47 @@ type State struct {
 	dbFile *os.File
 }
 
-func NewStateFromDisk() (*State, error) {
+func NewStateFromDisk(genesis_path string, tx_db_path string) (*State, error) {
+	gen, err := loadGenesis(filepath.Join(genesis_path, "genesis.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Set genesis balances
+	balances := make(map[Account]uint)
+	for account, balance := range gen.Balances {
+		balances[account] = balance
+	}
+
+	f, err := os.OpenFile(filepath.Join(tx_db_path, "tx.db"), os.O_APPEND|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(f)
+
+	state := &State{balances, make([]Tx, 0), f}
+
+	// Iterate over each the tx.db file's line
+	for scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
+
+		// Convert JSON encoded TX into an object (struct)
+		var tx Tx
+		json.Unmarshal(scanner.Bytes(), &tx)
+
+		// Rebuild the state (user balances), as a series of event
+		if err := state.apply(tx); err != nil {
+			return nil, err
+		}
+	}
+
+	return state, nil
+}
+
+func _NewStateFromDisk() (*State, error) {
 	cwd, err := os.Getwd() // get current working directory
 	if err != nil {
 		return nil, err
@@ -34,6 +74,7 @@ func NewStateFromDisk() (*State, error) {
 		return nil, err
 	}
 
+	// Set genesis balances
 	balances := make(map[Account]uint)
 	for account, balance := range gen.Balances {
 		balances[account] = balance
@@ -103,7 +144,7 @@ func (s *State) Close() {
 }
 
 func (s *State) apply(tx Tx) error {
-	if tx.IsReward() {
+	if tx.IsMint() {
 		s.Balances[tx.To] += tx.Value
 		return nil
 	}

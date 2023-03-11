@@ -41,7 +41,7 @@ func txAddCmd() *cobra.Command {
 
 			tx := database.NewTx(database.CreateAccount(from), database.CreateAccount(to), value, data)
 
-			state, err := database.NewStateFromDisk()
+			state, err := database.NewStateFromDisk(genesis_path, tx_db_path)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)

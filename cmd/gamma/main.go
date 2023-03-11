@@ -7,6 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	genesis_path = "postgres"
+	tx_db_path   = "postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable"
+)
+
 func main() {
 	var tbbCmd = &cobra.Command{
 		Use:   "gamma",
