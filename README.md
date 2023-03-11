@@ -1,1 +1,1 @@
-# jncoin
+# gamma
