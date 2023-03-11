@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/jnsoft/gamma/database"
 	"github.com/spf13/cobra"
@@ -35,11 +36,20 @@ var balancesListCmd = &cobra.Command{
 		}
 		defer state.Close()
 
+		keys := make([]database.Account, 0, len(state.Balances))
+		for k := range state.Balances {
+			keys = append(keys, k)
+		}
+
+		sort.SliceStable(keys, func(i, j int) bool {
+			return keys[i] < keys[j]
+		})
+
 		fmt.Println("Accounts balances:")
 		fmt.Println("__________________")
 		fmt.Println("")
-		for account, balance := range state.Balances {
-			fmt.Println(fmt.Sprintf("%s: %d", account, balance))
+		for _, account := range keys {
+			fmt.Println(fmt.Sprintf("%s: %d", account, state.Balances[account]))
 		}
 	},
 }
