@@ -129,7 +129,7 @@ func (s *State) Persist() error {
 			return err
 		}
 
-		if _, err = s.dbFile.Write(append(txJson, '\n')); err != nil {
+		if _, err = s.dbFile.Write(append(txJson,'\n')); err != nil {
 			return err
 		}
 		// Remove the TX written to a file from the mempool
@@ -144,6 +144,10 @@ func (s *State) Close() {
 }
 
 func (s *State) apply(tx Tx) error {
+	if !tx.IsValid() {
+		return fmt.Errorf("invalid transaction")
+	}
+
 	if tx.IsMint() {
 		s.Balances[tx.To] += tx.Value
 		return nil
