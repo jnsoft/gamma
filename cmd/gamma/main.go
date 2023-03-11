@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	genesis_path = "postgres"
-	tx_db_path   = "postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable"
+	genesis_path = "/workspaces/gamma/database"
+	tx_db_path   = "/workspaces/gamma/database"
 )
 
 func main() {
