@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
-	
+
+	"github.com/jnsoft/gamma/database"
 )
 
 func main() {
@@ -14,8 +16,8 @@ func main() {
 
 	state, err := database.NewStateFromDisk()
 	if err != nil {
-	fmt.Fprintln(os.Stderr, err)
-	os.Exit(1)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	defer state.Close()
 
