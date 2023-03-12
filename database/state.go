@@ -10,191 +10,317 @@ package database
 
 import (
 	"bufio"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
+	"reflect"
+	"sort"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
-type Snapshot [32]byte
+const TxGas = 21
+const TxGasPriceDefault = 1
+const TxFee = uint(50)
 
 type State struct {
-	Balances  map[Account]uint
-	txMempool []Tx
+	Balances      map[common.Address]uint
+	Account2Nonce map[common.Address]uint
 
-	dbFile   *os.File
-	snapshot Snapshot
+	dbFile *os.File
+
+	latestBlock     Block
+	latestBlockHash Hash
+	hasGenesisBlock bool
+
+	miningDifficulty uint
+
+	forkTIP1 uint64
+
+	HashCache   map[string]int64
+	HeightCache map[uint64]int64
 }
 
-func NewStateFromDisk(genesis_path string, tx_db_path string) (*State, error) {
-	gen, err := loadGenesis(filepath.Join(genesis_path, "genesis.json"))
+func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
+	err := InitDataDirIfNotExists(dataDir, []byte(genesisJson))
 	if err != nil {
 		return nil, err
 	}
 
-	// Set genesis balances
-	balances := make(map[Account]uint)
+	gen, err := loadGenesis(getGenesisJsonFilePath(dataDir))
+	if err != nil {
+		return nil, err
+	}
+
+	balances := make(map[common.Address]uint)
 	for account, balance := range gen.Balances {
 		balances[account] = balance
 	}
 
-	f, err := os.OpenFile(filepath.Join(tx_db_path, "tx.db"), os.O_APPEND|os.O_RDWR, 0600)
+	account2nonce := make(map[common.Address]uint)
+
+	dbFilepath := getBlocksDbFilePath(dataDir)
+	f, err := os.OpenFile(dbFilepath, os.O_APPEND|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err
 	}
 
 	scanner := bufio.NewScanner(f)
 
-	state := &State{balances, make([]Tx, 0), f, Snapshot{}}
+	state := &State{balances, account2nonce, f, Block{}, Hash{}, false, miningDifficulty, gen.ForkTIP1, map[string]int64{}, map[uint64]int64{}}
 
-	// Iterate over each the tx.db file's line
+	// set file position
+	filePos := int64(0)
+
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
 			return nil, err
 		}
 
-		// Convert JSON encoded TX into an object (struct)
-		var tx Tx
-		json.Unmarshal(scanner.Bytes(), &tx)
+		blockFsJson := scanner.Bytes()
 
-		// Rebuild the state (user balances), as a series of event
-		if err := state.apply(tx); err != nil {
+		if len(blockFsJson) == 0 {
+			break
+		}
+
+		var blockFs BlockFS
+		err = json.Unmarshal(blockFsJson, &blockFs)
+		if err != nil {
 			return nil, err
 		}
-	}
 
-	err = state.doSnapshot()
-	if err != nil {
-		return nil, err
+		err = applyBlock(blockFs.Value, state)
+		if err != nil {
+			return nil, err
+		}
+
+		// set search caches
+		state.HashCache[blockFs.Key.Hex()] = filePos
+		state.HeightCache[blockFs.Value.Header.Number] = filePos
+		filePos += int64(len(blockFsJson)) + 1
+
+		state.latestBlock = blockFs.Value
+		state.latestBlockHash = blockFs.Key
+		state.hasGenesisBlock = true
 	}
 
 	return state, nil
 }
 
-func _NewStateFromDisk() (*State, error) {
-	cwd, err := os.Getwd() // get current working directory
-	if err != nil {
-		return nil, err
-	}
-
-	gen, err := loadGenesis(filepath.Join(cwd, "database", "genesis.json"))
-	if err != nil {
-		return nil, err
-	}
-
-	// Set genesis balances
-	balances := make(map[Account]uint)
-	for account, balance := range gen.Balances {
-		balances[account] = balance
-	}
-
-	f, err := os.OpenFile(filepath.Join(cwd, "database", "tx.db"), os.O_APPEND|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, err
-	}
-
-	scanner := bufio.NewScanner(f)
-
-	state := &State{balances, make([]Tx, 0), f, Snapshot{}}
-
-	// Iterate over each the tx.db file's line
-	for scanner.Scan() {
-		if err := scanner.Err(); err != nil {
-			return nil, err
-		}
-
-		// Convert JSON encoded TX into an object (struct)
-		var tx Tx
-		json.Unmarshal(scanner.Bytes(), &tx)
-
-		// Rebuild the state (user balances), as a series of event
-		if err := state.apply(tx); err != nil {
-			return nil, err
+func (s *State) AddBlocks(blocks []Block) error {
+	for _, b := range blocks {
+		_, err := s.AddBlock(b)
+		if err != nil {
+			return err
 		}
 	}
-
-	return state, nil
-}
-
-func (s *State) LatestSnapshot() Snapshot {
-	return s.snapshot
-}
-
-func (s *State) Add(tx Tx) error {
-	if err := s.apply(tx); err != nil {
-		return err
-	}
-
-	s.txMempool = append(s.txMempool, tx)
 
 	return nil
 }
 
-func (s *State) Persist() (Snapshot, error) {
-	// Make a copy of mempool because the s.txMempool will be modified in the loop below
-	mempool := make([]Tx, len(s.txMempool))
-	copy(mempool, s.txMempool)
+func (s *State) AddBlock(b Block) (Hash, error) {
+	pendingState := s.Copy()
 
-	for i := 0; i < len(mempool); i++ {
-		txJson, err := json.Marshal(mempool[i])
-		if err != nil {
-			return Snapshot{}, err
-		}
-
-		if _, err = s.dbFile.Write(append(txJson, '\n')); err != nil {
-			return Snapshot{}, err
-		}
-
-		err = s.doSnapshot()
-		if err != nil {
-			return Snapshot{}, err
-		}
-
-		// Remove the TX written to a file from the mempool
-		s.txMempool = s.txMempool[1:]
+	err := applyBlock(b, &pendingState)
+	if err != nil {
+		return Hash{}, err
 	}
 
-	return s.snapshot, nil
+	blockHash, err := b.Hash()
+	if err != nil {
+		return Hash{}, err
+	}
+
+	blockFs := BlockFS{blockHash, b}
+
+	blockFsJson, err := json.Marshal(blockFs)
+	if err != nil {
+		return Hash{}, err
+	}
+
+	fmt.Printf("\nPersisting new Block to disk:\n")
+	fmt.Printf("\t%s\n", blockFsJson)
+
+	// get file pos for cache
+	fs, _ := s.dbFile.Stat()
+	filePos := fs.Size() + 1
+
+	_, err = s.dbFile.Write(append(blockFsJson, '\n'))
+	if err != nil {
+		return Hash{}, err
+	}
+
+	// set search caches
+	s.HashCache[blockFs.Key.Hex()] = filePos
+	s.HeightCache[blockFs.Value.Header.Number] = filePos
+
+	s.Balances = pendingState.Balances
+	s.Account2Nonce = pendingState.Account2Nonce
+	s.latestBlockHash = blockHash
+	s.latestBlock = b
+	s.hasGenesisBlock = true
+	s.miningDifficulty = pendingState.miningDifficulty
+
+	return blockHash, nil
 }
 
-func (s *State) Close() {
-	s.dbFile.Close()
+func (s *State) NextBlockNumber() uint64 {
+	if !s.hasGenesisBlock {
+		return uint64(0)
+	}
+
+	return s.LatestBlock().Header.Number + 1
 }
 
-func (s *State) apply(tx Tx) error {
-	if !tx.IsValid() {
-		return fmt.Errorf("invalid transaction")
+func (s *State) LatestBlock() Block {
+	return s.latestBlock
+}
+
+func (s *State) LatestBlockHash() Hash {
+	return s.latestBlockHash
+}
+
+func (s *State) GetNextAccountNonce(account common.Address) uint {
+	return s.Account2Nonce[account] + 1
+}
+
+func (s *State) ChangeMiningDifficulty(newDifficulty uint) {
+	s.miningDifficulty = newDifficulty
+}
+
+func (s *State) IsTIP1Fork() bool {
+	return s.NextBlockNumber() >= s.forkTIP1
+}
+
+func (s *State) Copy() State {
+	c := State{}
+	c.hasGenesisBlock = s.hasGenesisBlock
+	c.latestBlock = s.latestBlock
+	c.latestBlockHash = s.latestBlockHash
+	c.Balances = make(map[common.Address]uint)
+	c.Account2Nonce = make(map[common.Address]uint)
+	c.miningDifficulty = s.miningDifficulty
+	c.forkTIP1 = s.forkTIP1
+
+	for acc, balance := range s.Balances {
+		c.Balances[acc] = balance
 	}
 
-	if tx.IsMint() {
-		s.Balances[tx.To] += tx.Value
-		return nil
+	for acc, nonce := range s.Account2Nonce {
+		c.Account2Nonce[acc] = nonce
 	}
 
-	if s.Balances[tx.From] < tx.Value {
-		return fmt.Errorf("insufficient balance")
+	return c
+}
+
+func (s *State) Close() error {
+	return s.dbFile.Close()
+}
+
+// applyBlock verifies if block can be added to the blockchain.
+//
+// Block metadata are verified as well as transactions within (sufficient balances, etc).
+func applyBlock(b Block, s *State) error {
+	nextExpectedBlockNumber := s.latestBlock.Header.Number + 1
+
+	if s.hasGenesisBlock && b.Header.Number != nextExpectedBlockNumber {
+		return fmt.Errorf("next expected block must be '%d' not '%d'", nextExpectedBlockNumber, b.Header.Number)
 	}
 
-	s.Balances[tx.From] -= tx.Value
+	if s.hasGenesisBlock && s.latestBlock.Header.Number > 0 && !reflect.DeepEqual(b.Header.Parent, s.latestBlockHash) {
+		return fmt.Errorf("next block parent hash must be '%x' not '%x'", s.latestBlockHash, b.Header.Parent)
+	}
+
+	hash, err := b.Hash()
+	if err != nil {
+		return err
+	}
+
+	if !IsBlockHashValid(hash, s.miningDifficulty) {
+		return fmt.Errorf("invalid block hash %x", hash)
+	}
+
+	err = applyTXs(b.TXs, s)
+	if err != nil {
+		return err
+	}
+
+	s.Balances[b.Header.Miner] += BlockReward
+	if s.IsTIP1Fork() {
+		s.Balances[b.Header.Miner] += b.GasReward()
+	} else {
+		s.Balances[b.Header.Miner] += uint(len(b.TXs)) * TxFee
+	}
+
+	return nil
+}
+
+func applyTXs(txs []SignedTx, s *State) error {
+	sort.Slice(txs, func(i, j int) bool {
+		return txs[i].Time < txs[j].Time
+	})
+
+	for _, tx := range txs {
+		err := ApplyTx(tx, s)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ApplyTx(tx SignedTx, s *State) error {
+	err := ValidateTx(tx, s)
+	if err != nil {
+		return err
+	}
+
+	s.Balances[tx.From] -= tx.Cost(s.IsTIP1Fork())
 	s.Balances[tx.To] += tx.Value
 
+	s.Account2Nonce[tx.From] = tx.Nonce
+
 	return nil
 }
 
-func (s *State) doSnapshot() error {
-	// Re-read the whole file from the first byte
-	_, err := s.dbFile.Seek(0, 0)
+func ValidateTx(tx SignedTx, s *State) error {
+	ok, err := tx.IsAuthentic()
 	if err != nil {
 		return err
 	}
 
-	txsData, err := io.ReadAll(s.dbFile)
-	if err != nil {
-		return err
+	if !ok {
+		return fmt.Errorf("wrong TX. Sender '%s' is forged", tx.From.String())
 	}
-	s.snapshot = sha256.Sum256(txsData)
+
+	expectedNonce := s.GetNextAccountNonce(tx.From)
+	if tx.Nonce != expectedNonce {
+		return fmt.Errorf("wrong TX. Sender '%s' next nonce must be '%d', not '%d'", tx.From.String(), expectedNonce, tx.Nonce)
+	}
+
+	if s.IsTIP1Fork() {
+		// For now we only have one type, transfer TXs, so all TXs must pay 21 gas like on Ethereum (21 000)
+		if tx.Gas != TxGas {
+			return fmt.Errorf("insufficient TX gas %v. required: %v", tx.Gas, TxGas)
+		}
+
+		if tx.GasPrice < TxGasPriceDefault {
+			return fmt.Errorf("insufficient TX gasPrice %v. required at least: %v", tx.GasPrice, TxGasPriceDefault)
+		}
+
+	} else {
+		// Prior to TIP1, a signed TX must NOT populate the Gas fields to prevent consensus from crashing
+		// It's not enough to add this validation to http_routes.go because a TX could come from another node
+		// that could modify its software and broadcast such a TX, it must be validated here too.
+		if tx.Gas != 0 || tx.GasPrice != 0 {
+			return fmt.Errorf("invalid TX. `Gas` and `GasPrice` can't be populated before TIP1 fork is active")
+		}
+	}
+
+	if tx.Cost(s.IsTIP1Fork()) > s.Balances[tx.From] {
+		return fmt.Errorf("wrong TX. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From.String(), s.Balances[tx.From], tx.Cost(s.IsTIP1Fork()))
+	}
 
 	return nil
 }
