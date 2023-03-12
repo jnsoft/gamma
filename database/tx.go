@@ -10,8 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type Account string
-
 type Tx struct {
 	From     common.Address `json:"from"`
 	To       common.Address `json:"to"`
@@ -28,8 +26,8 @@ type SignedTx struct {
 	Sig []byte `json:"signature"`
 }
 
-func NewAccount(value string) Account {
-	return Account(value)
+func NewAccount(value string) common.Address {
+	return common.HexToAddress(value)
 }
 
 func NewTx(from, to common.Address, gas uint, gasPrice uint, value, nonce uint, data string) Tx {

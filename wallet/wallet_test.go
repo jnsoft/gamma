@@ -6,8 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -109,10 +109,8 @@ func TestSign(t *testing.T) {
 }
 
 func TestSignTxWithKeystoreAccount(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "wallet_test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := os.TempDir()
+
 	defer fs.RemoveDir(tmpDir)
 
 	andrej, err := NewKeystoreAccount(tmpDir, testKeystoreAccountsPwd)
@@ -164,10 +162,7 @@ func TestSignTxWithKeystoreAccount(t *testing.T) {
 }
 
 func TestSignForgedTxWithKeystoreAccount(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "wallet_test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := os.TempDir()
 	defer fs.RemoveDir(tmpDir)
 
 	hacker, err := NewKeystoreAccount(tmpDir, testKeystoreAccountsPwd)

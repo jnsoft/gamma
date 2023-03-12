@@ -84,8 +84,9 @@ func TestMineWithTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Microsecond*100)
-
+	ctx, cancel := context.WithTimeout(context.Background(), time.Microsecond*100)
+	defer cancel()
+	
 	_, err = Mine(ctx, pendingBlock, defaultTestMiningDifficulty)
 	if err == nil {
 		t.Fatal(err)
@@ -108,7 +109,7 @@ func generateKey() (*ecdsa.PrivateKey, ecdsa.PublicKey, common.Address, error) {
 }
 
 func createRandomPendingBlock(privKey *ecdsa.PrivateKey, acc common.Address) (PendingBlock, error) {
-	tx := database.NewBaseTx(acc, database.NewAccount(testKsBabaYagaAccount), 1, 1, "")
+	tx := database.NewBaseTx(acc, database.NewAccount("testKsBabaYagaAccount"), 1, 1, "")
 	signedTx, err := wallet.SignTx(tx, privKey)
 	if err != nil {
 		return PendingBlock{}, err

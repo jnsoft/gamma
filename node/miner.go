@@ -3,11 +3,12 @@ package node
 import (
 	"context"
 	"fmt"
-	"math/rand"
+
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/database"
+	"github.com/jnsoft/gamma/util/security"
 )
 
 type PendingBlock struct {
@@ -43,7 +44,7 @@ func Mine(ctx context.Context, pb PendingBlock, miningDifficulty uint) (database
 		}
 
 		attempt++
-		nonce = generateNonce()
+		nonce = security.GenerateNonce()
 
 		if attempt%1000000 == 0 || attempt == 1 {
 			fmt.Printf("Mining %d Pending TXs. Attempt: %d\n", len(pb.txs), attempt)
@@ -69,10 +70,4 @@ func Mine(ctx context.Context, pb PendingBlock, miningDifficulty uint) (database
 	fmt.Printf("\tTime: %s\n\n", time.Since(start))
 
 	return block, nil
-}
-
-func generateNonce() uint32 {
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	return rand.Uint32()
 }

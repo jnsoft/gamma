@@ -24,10 +24,6 @@ type Genesis struct {
 	ForkTIP1 uint64 `json:"fork_tip_1"`
 }
 
-type old_genesis struct {
-	Balances map[Account]uint `json:"balances"`
-}
-
 func loadGenesis(path string) (Genesis, error) {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {

@@ -3,7 +3,7 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -27,7 +27,7 @@ func writeRes(w http.ResponseWriter, content interface{}) {
 }
 
 func readReq(r *http.Request, reqBody interface{}) error {
-	reqBodyJson, err := ioutil.ReadAll(r.Body)
+	reqBodyJson, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("unable to read request body. %s", err.Error())
 	}
@@ -42,7 +42,7 @@ func readReq(r *http.Request, reqBody interface{}) error {
 }
 
 func readRes(r *http.Response, reqBody interface{}) error {
-	resBodyJson, err := ioutil.ReadAll(r.Body)
+	resBodyJson, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("unable to read response body. %s", err.Error())
 	}
