@@ -12,7 +12,7 @@
             "mode": "auto",
             "program": "cmd/gamma",
             "env": {},
-            "args": ["balances", "list"],
+            "args": ["balances", "list", "--datadir", "database"],
         },
         {
             "name": "Add transaction",
