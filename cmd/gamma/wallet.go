@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/davecgh/go-spew/spew"
@@ -61,7 +60,7 @@ func walletPrintPrivKeyCmd() *cobra.Command {
 			ksFile, _ := cmd.Flags().GetString(flagKeystoreFile)
 			password := getPassPhrase("Please enter a password to decrypt the wallet:", false)
 
-			keyJson, err := ioutil.ReadFile(ksFile)
+			keyJson, err := os.ReadFile(ksFile)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
