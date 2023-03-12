@@ -45,7 +45,7 @@ var balancesListCmd = &cobra.Command{
 			return keys[i] < keys[j]
 		})
 
-		fmt.Println("Accounts balances:")
+		fmt.Printf("Accounts balances at %x:\n", state.LatestSnapshot())
 		fmt.Println("__________________")
 		fmt.Println("")
 		for _, account := range keys {
