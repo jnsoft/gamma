@@ -5,7 +5,9 @@ import (
 	"os"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/database"
+	"github.com/jnsoft/gamma/node"
 	"github.com/spf13/cobra"
 )
 
@@ -38,12 +40,12 @@ func balancesListCmd() *cobra.Command {
 			defer state.Close()
 
 			// sort keys from hashset
-			keys := make([]database.Account, 0, len(state.Balances))
+			keys := make([]common.Address, 0, len(state.Balances))
 			for k := range state.Balances {
 				keys = append(keys, k)
 			}
 			sort.SliceStable(keys, func(i, j int) bool {
-				return keys[i] < keys[j]
+				return keys[i].Hex() < keys[j].Hex()
 			})
 
 			fmt.Printf("Accounts balances at %x:\n", state.LatestBlockHash())
@@ -53,7 +55,7 @@ func balancesListCmd() *cobra.Command {
 			//	fmt.Println(fmt.Sprintf("%s: %d", account.String(), balance))
 			//}
 			for _, account := range keys {
-				fmt.Println(fmt.Sprintf("%s: %d", account, state.Balances[account]))
+				fmt.Println(fmt.Sprintf("%s: %d", account.String(), state.Balances[account]))
 			}
 			fmt.Println("")
 			fmt.Printf("Accounts nonces:")

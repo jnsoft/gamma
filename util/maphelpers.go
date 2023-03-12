@@ -1,4 +1,4 @@
-package helpers
+package util
 
 type Ordered interface {
     type int, int8, int16, int32, int64,

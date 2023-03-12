@@ -48,14 +48,6 @@ func (t Tx) IsMint() bool {
 	return t.Data == "mint"
 }
 
-func (t Tx) IsValid() bool {
-	t1 := t.From != "" || t.IsMint()
-	t2 := t.To != ""
-	t3 := t.Value > 0
-	return t1 && t2 && t3
-
-}
-
 func (t Tx) Cost(isTip1Fork bool) uint {
 	if isTip1Fork {
 		return t.Value + t.GasCost()

@@ -8,8 +8,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/spf13/cobra"
 	"github.com/jnsoft/gamma/wallet"
+	"github.com/spf13/cobra"
 )
 
 func walletCmd() *cobra.Command {

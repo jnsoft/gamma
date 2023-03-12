@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jnsoft/gamma/fs"
+	"github.com/jnsoft/gamma/util/fs"
 	"github.com/spf13/cobra"
 )
 
@@ -26,8 +26,8 @@ const flagBootstrapPort = "bootstrap-port"
 
 func main() {
 	var tbbCmd = &cobra.Command{
-		Use:   "tbb",
-		Short: "The Blockchain Bar CLI",
+		Use:   "gamma",
+		Short: "The Gamma Blockchain CLI",
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
@@ -36,25 +36,6 @@ func main() {
 	tbbCmd.AddCommand(balancesCmd())
 	tbbCmd.AddCommand(walletCmd())
 	tbbCmd.AddCommand(runCmd())
-
-	err := tbbCmd.Execute()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-func _main() {
-	var tbbCmd = &cobra.Command{
-		Use:   "gamma",
-		Short: "The Gamma CLI",
-		Run: func(cmd *cobra.Command, args []string) {
-		},
-	}
-
-	tbbCmd.AddCommand(versionCmd)
-	tbbCmd.AddCommand(balancesCmd())
-	tbbCmd.AddCommand(txCmd())
 
 	err := tbbCmd.Execute()
 	if err != nil {

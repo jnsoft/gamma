@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/fs"
+	"github.com/jnsoft/gamma/util/fs"
 )
 
 // The password for testing keystore files:
