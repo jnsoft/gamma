@@ -5,14 +5,16 @@ import (
 	"os"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/database"
+	"github.com/jnsoft/gamma/node"
 	"github.com/spf13/cobra"
 )
 
 func balancesCmd() *cobra.Command {
 	var balancesCmd = &cobra.Command{
 		Use:   "balances",
-		Short: "Interact with balances (list...).",
+		Short: "Interacts with balances (list...).",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return incorrectUsageErr()
 		},
@@ -20,36 +22,53 @@ func balancesCmd() *cobra.Command {
 		},
 	}
 
-	balancesCmd.AddCommand(balancesListCmd)
+	balancesCmd.AddCommand(balancesListCmd())
 
 	return balancesCmd
 }
 
-var balancesListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Lists all balances.",
-	Run: func(cmd *cobra.Command, args []string) {
-		state, err := database.NewStateFromDisk(genesis_path, tx_db_path)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		defer state.Close()
+func balancesListCmd() *cobra.Command {
+	var balancesListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "Lists all balances.",
+		Run: func(cmd *cobra.Command, args []string) {
+			state, err := database.NewStateFromDisk(getDataDirFromCmd(cmd), node.DefaultMiningDifficulty)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			defer state.Close()
 
-		keys := make([]database.Account, 0, len(state.Balances))
-		for k := range state.Balances {
-			keys = append(keys, k)
-		}
+			// sort keys from hashset
+			keys := make([]common.Address, 0, len(state.Balances))
+			for k := range state.Balances {
+				keys = append(keys, k)
+			}
+			sort.SliceStable(keys, func(i, j int) bool {
+				return keys[i].Hex() < keys[j].Hex()
+			})
 
-		sort.SliceStable(keys, func(i, j int) bool {
-			return keys[i] < keys[j]
-		})
+			fmt.Printf("Accounts balances at %x:\n", state.LatestBlockHash())
+			fmt.Println("__________________")
+			fmt.Println("")
+			//for account, balance := range state.Balances {
+			//	fmt.Println(fmt.Sprintf("%s: %d", account.String(), balance))
+			//}
+			for _, account := range keys {
+				fmt.Printf("%s: %d\n", account.String(), state.Balances[account])
+			}
+			fmt.Println("")
+			fmt.Printf("Accounts nonces:")
+			fmt.Println("")
+			fmt.Println("__________________")
+			fmt.Println("")
+			for account, nonce := range state.Account2Nonce {
+				fmt.Printf("%s: %d\n", account.String(), nonce)
+			}
+		},
+	}
 
-		fmt.Println("Accounts balances:")
-		fmt.Println("__________________")
-		fmt.Println("")
-		for _, account := range keys {
-			fmt.Println(fmt.Sprintf("%s: %d", account, state.Balances[account]))
-		}
-	},
+	addDefaultRequiredFlags(balancesListCmd)
+
+	return balancesListCmd
 }
