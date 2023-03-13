@@ -1,5 +1,3 @@
-package database
-
 /*
 • Adding new transactions to Mempool
 • Validating transactions against the current State (sufficient sender balance)
@@ -7,6 +5,7 @@ package database
 • Persisting transactions to disk
 • Calculating accounts balances by replaying all transactions since Genesis in a sequence
 */
+package database
 
 import (
 	"bufio"
