@@ -228,6 +228,11 @@ func (t SignedTx) IsAuthentic() (bool, error) {
 	return recoveredAccount.Hex() == t.From.Hex(), nil
 }
 
+// String implements fmt.Stringer.
+func (a Address) String() string {
+	return a.Hex()
+}
+
 // Hex returns an EIP55-compliant hex string representation of the address.
 func (a Address) Hex() string {
 	return string(a.checksumHex())
