@@ -265,3 +265,8 @@ func (a Address) hex() []byte {
 	hex.Encode(buf[2:], a[:])
 	return buf[:]
 }
+
+// UnmarshalJSON parses a hash in hex syntax.
+func (a *Address) UnmarshalJSON(input []byte) error {
+	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
+}
