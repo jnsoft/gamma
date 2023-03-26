@@ -11,6 +11,10 @@ const badNibble = ^uint64(0)
 
 type Bytes []byte
 
+type decError struct{ msg string }
+
+func (err decError) Error() string { return err.msg }
+
 // Decode decodes a hex string with 0x prefix.
 func Decode(input string) ([]byte, error) {
 	if len(input) == 0 {
@@ -107,14 +111,12 @@ func decodeNibble(in byte) uint64 {
 	}
 }
 
-
 func wrapTypeError(err error, typ reflect.Type) error {
 	if _, ok := err.(*decError); ok {
 		return &json.UnmarshalTypeError{Value: err.Error(), Type: typ}
 	}
 	return err
 }
-
 
 func errNonString(typ reflect.Type) error {
 	return &json.UnmarshalTypeError{Value: "non-string", Type: typ}
