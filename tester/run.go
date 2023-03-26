@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/jnsoft/gamma/database"
 )
 
@@ -14,9 +15,9 @@ func main() {
 	fmt.Println(t.Day())
 	fmt.Println(t.Year())
 
-	// TODO: hantera 
-	// signera transaktioner? 
-	// 
+	// TODO: hantera
+	// signera transaktioner?
+	//
 
 	state, err := database.NewStateFromDisk("/tmp/gammadb", 1) // kommer skapa /tmp/gammadb/database/ och filer där
 	if err != nil {
@@ -25,34 +26,32 @@ func main() {
 	}
 	defer state.Close()
 
-	block0 := database.NewBlock(
+	database.NewSimpleTx(database.Address(hexutil.MustDecode("0x01")), database.Address(hexutil.MustDecode("0x01")), 1, "")
+
+	block0 := database.NewSimpleBlock(
 		database.Hash{},
-		uint64(time.Now().Unix()),
-		[]database.Tx{
-			database.NewTx("andrej", "andrej", 3, ""),
-			database.NewTx("andrej", "andrej", 700, "reward"),
+		[]database.SimpleTx{
+			database.NewSimpleTxStringAddress("0x01", "0x02", 3, ""),
+			database.NewSimpleTxStringAddress("0x01", "0x02", 5, ""),
 		},
 	)
 
-	state.AddBlock(block0)
+	state.AddSimpleBlock(block0)
 	block0hash, _ := state.Persist()
 
-	block1 := database.NewBlock(
+	block1 := database.NewSimpleBlock(
 		block0hash,
-		uint64(time.Now().Unix()),
-		[]database.Tx{
-			database.NewTx("andrej", "babayaga", 2000, ""),
-			database.NewTx("andrej", "andrej", 100, "reward"),
-			database.NewTx("babayaga", "andrej", 1, ""),
-			database.NewTx("babayaga", "caesar", 1000, ""),
-			database.NewTx("babayaga", "andrej", 50, ""),
-			database.NewTx("andrej", "andrej", 600, "reward"),
+		[]database.SimpleTx{
+			database.NewSimpleTxStringAddress("0x01", "0x02", 2000, ""),
+			database.NewSimpleTxStringAddress("0x01", "0x01", 100, "mint"),
+			database.NewSimpleTxStringAddress("0x02", "0x01", 1, ""),
+			database.NewSimpleTxStringAddress("0x02", "0x03", 1000, ""),
+			database.NewSimpleTxStringAddress("0x02", "0x01", 50, ""),
+			database.NewSimpleTxStringAddress("0x01", "0x01", 100, "mint"),
 		},
 	)
 
-	state.AddBlock(block1)
+	state.AddSimpleBlock(block1)
 	state.Persist()
-		
-
 
 }

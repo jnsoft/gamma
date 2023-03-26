@@ -8,11 +8,22 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/jnsoft/gamma/util/misc"
+	"github.com/jnsoft/gamma/util/security"
 )
 
-const BlockReward = 100
+// Lengths of hashes and addresses in bytes.
+const (
+	// HashLength is the expected length of the hash
+	HashLength = 32
+	// AddressLength is the expected length of the address
+	AddressLength = 20
 
-type Hash [32]byte
+	BlockReward = 100
+)
+
+type Hash [HashLength]byte
+type Address [AddressLength]byte
 
 func (h Hash) Hex() string {
 	return hex.EncodeToString(h[:])
@@ -33,6 +44,12 @@ func (h Hash) IsEmpty() bool {
 	return bytes.Equal(emptyHash[:], h[:])
 }
 
+type SimpleBlock struct {
+	Parent Hash       `json:"parent"` // parent block reference
+	Time   uint64     `json:"time"`
+	TXs    []SimpleTx `json:"payload"` // new transactions only (payload)
+}
+
 type Block struct {
 	Header BlockHeader `json:"header"`  // metadata (parent block hash + time)
 	TXs    []SignedTx  `json:"payload"` // new transactions only (payload)
@@ -51,11 +68,29 @@ type BlockFS struct {
 	Value Block `json:"block"`
 }
 
-func NewBlock(parent Hash, number uint64, nonce uint32, time uint64, miner common.Address, txs []SignedTx) Block {
-	return Block{BlockHeader{parent, number, nonce, time, miner}, txs}
+type SimpleBlockFS struct {
+	Key   Hash        `json:"hash"`
+	Value SimpleBlock `json:"block"`
+}
+
+func NewSimpleBlock(parent Hash, txs []SimpleTx) SimpleBlock {
+	return SimpleBlock{parent, misc.GetTime(), txs}
+}
+
+func NewBlock(parent Hash, number uint64, miner common.Address, txs []SignedTx) Block {
+	return Block{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
 func (b Block) Hash() (Hash, error) {
+	blockJson, err := json.Marshal(b)
+	if err != nil {
+		return Hash{}, err
+	}
+
+	return sha256.Sum256(blockJson), nil
+}
+
+func (b SimpleBlock) Hash() (Hash, error) {
 	blockJson, err := json.Marshal(b)
 	if err != nil {
 		return Hash{}, err

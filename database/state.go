@@ -23,8 +23,10 @@ const TxGasPriceDefault = 1
 const TxFee = uint(50)
 
 type State struct {
-	Balances      map[common.Address]uint
-	Account2Nonce map[common.Address]uint
+	Balances      map[Address]uint
+	Account2Nonce map[Address]uint
+
+	txMempool []SimpleTx // Only for SimpleTx
 
 	dbFile *os.File
 
@@ -161,6 +163,69 @@ func (s *State) AddBlock(b Block) (Hash, error) {
 	s.miningDifficulty = pendingState.miningDifficulty
 
 	return blockHash, nil
+}
+
+func (s *State) AddSimpleBlock(b SimpleBlock) error {
+	for _, tx := range b.TXs {
+		if err := s.AddSimpleTx(tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *State) AddSimpleTx(tx SimpleTx) error {
+	if err := s.applySimple(tx); err != nil {
+		return err
+	}
+
+	s.txMempool = append(s.txMempool, tx)
+
+	return nil
+}
+
+func (s *State) applySimple(tx SimpleTx) error {
+	if tx.IsMint() {
+		s.Balances[tx.To] += tx.Value
+		return nil
+	}
+
+	if s.Balances[tx.From] < tx.Value {
+		return fmt.Errorf("insufficient balance")
+	}
+
+	s.Balances[tx.From] -= tx.Value
+	s.Balances[tx.To] += tx.Value
+
+	return nil
+}
+
+func (s *State) Persist() (Hash, error) {
+	block := NewSimpleBlock(s.latestBlockHash, s.txMempool)
+	blockHash, err := block.Hash()
+	if err != nil {
+		return Hash{}, err
+	}
+
+	blockFs := SimpleBlockFS{blockHash, block}
+
+	blockFsJson, err := json.Marshal(blockFs)
+	if err != nil {
+		return Hash{}, err
+	}
+
+	fmt.Printf("Persisting new Block to disk:\n")
+	fmt.Printf("\t%s\n", blockFsJson)
+
+	if _, err = s.dbFile.Write(append(blockFsJson, '\n')); err != nil {
+		return Hash{}, err
+	}
+	s.latestBlockHash = blockHash
+
+	s.txMempool = []SimpleTx{}
+
+	return s.latestBlockHash, nil
 }
 
 func (s *State) NextBlockNumber() uint64 {

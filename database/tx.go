@@ -7,7 +7,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/jnsoft/gamma/util/misc"
+	"github.com/jnsoft/gamma/util/security"
 )
 
 type Tx struct {
@@ -26,8 +29,29 @@ type SignedTx struct {
 	Sig []byte `json:"signature"`
 }
 
+type SimpleTx struct {
+	From  Address `json:"from"`
+	To    Address `json:"to"`
+	Value uint    `json:"value"`
+	Nonce uint    `json:"nonce"`
+	Data  string  `json:"data"`
+	Time  uint64  `json:"time"`
+}
+
 func NewAccount(value string) common.Address {
 	return common.HexToAddress(value)
+}
+
+func NewSimpleTxStringAddress(from, to string, value uint, data string) SimpleTx {
+	return NewSimpleTx(
+		Address(hexutil.MustDecode(from)),
+		Address(hexutil.MustDecode(to)),
+		value,
+		"")
+}
+
+func NewSimpleTx(from, to Address, value uint, data string) SimpleTx {
+	return SimpleTx{from, to, value, uint(security.GenerateNonce()), data, misc.GetTime()}
 }
 
 func NewTx(from, to common.Address, gas uint, gasPrice uint, value, nonce uint, data string) Tx {
@@ -43,6 +67,10 @@ func NewSignedTx(tx Tx, sig []byte) SignedTx {
 }
 
 func (t Tx) IsMint() bool {
+	return t.Data == "mint"
+}
+
+func (t SimpleTx) IsMint() bool {
 	return t.Data == "mint"
 }
 
