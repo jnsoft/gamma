@@ -3,8 +3,6 @@ package database
 import (
 	"encoding/json"
 	"io/ioutil"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 var genesisJson = `{
@@ -19,8 +17,8 @@ var genesisJson = `{
   }`
 
 type Genesis struct {
-	Balances map[common.Address]uint `json:"balances"`
-	Symbol   string                  `json:"symbol"`
+	Balances map[Address]uint `json:"balances"`
+	Symbol   string           `json:"symbol"`
 
 	ForkTIP1 uint64 `json:"fork_tip_1"`
 }

@@ -14,8 +14,6 @@ import (
 	"os"
 	"reflect"
 	"sort"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 const TxGas = 21
@@ -53,12 +51,12 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 		return nil, err
 	}
 
-	balances := make(map[common.Address]uint)
+	balances := make(map[Address]uint)
 	for account, balance := range gen.Balances {
 		balances[account] = balance
 	}
 
-	account2nonce := make(map[common.Address]uint)
+	account2nonce := make(map[Address]uint)
 
 	dbFilepath := getBlocksDbFilePath(dataDir)
 	f, err := os.OpenFile(dbFilepath, os.O_APPEND|os.O_RDWR, 0600)
@@ -68,7 +66,7 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 
 	scanner := bufio.NewScanner(f)
 
-	state := &State{balances, account2nonce, f, Block{}, Hash{}, false, miningDifficulty, gen.ForkTIP1, map[string]int64{}, map[uint64]int64{}}
+	state := &State{balances, account2nonce, nil, f, Block{}, Hash{}, false, miningDifficulty, gen.ForkTIP1, map[string]int64{}, map[uint64]int64{}}
 
 	// set file position
 	filePos := int64(0)
@@ -244,7 +242,7 @@ func (s *State) LatestBlockHash() Hash {
 	return s.latestBlockHash
 }
 
-func (s *State) GetNextAccountNonce(account common.Address) uint {
+func (s *State) GetNextAccountNonce(account Address) uint {
 	return s.Account2Nonce[account] + 1
 }
 
@@ -261,8 +259,8 @@ func (s *State) Copy() State {
 	c.hasGenesisBlock = s.hasGenesisBlock
 	c.latestBlock = s.latestBlock
 	c.latestBlockHash = s.latestBlockHash
-	c.Balances = make(map[common.Address]uint)
-	c.Account2Nonce = make(map[common.Address]uint)
+	c.Balances = make(map[Address]uint)
+	c.Account2Nonce = make(map[Address]uint)
 	c.miningDifficulty = s.miningDifficulty
 	c.forkTIP1 = s.forkTIP1
 

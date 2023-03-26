@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/util/misc"
 	"github.com/jnsoft/gamma/util/security"
 )
@@ -56,11 +55,11 @@ type Block struct {
 }
 
 type BlockHeader struct {
-	Parent Hash           `json:"parent"` // parent block reference
-	Number uint64         `json:"number"`
-	Nonce  uint32         `json:"nonce"`
-	Time   uint64         `json:"time"`
-	Miner  common.Address `json:"miner"`
+	Parent Hash    `json:"parent"` // parent block reference
+	Number uint64  `json:"number"`
+	Nonce  uint32  `json:"nonce"`
+	Time   uint64  `json:"time"`
+	Miner  Address `json:"miner"`
 }
 
 type BlockFS struct {
@@ -77,7 +76,7 @@ func NewSimpleBlock(parent Hash, txs []SimpleTx) SimpleBlock {
 	return SimpleBlock{parent, misc.GetTime(), txs}
 }
 
-func NewBlock(parent Hash, number uint64, miner common.Address, txs []SignedTx) Block {
+func NewBlock(parent Hash, number uint64, miner Address, txs []SignedTx) Block {
 	return Block{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
