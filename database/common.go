@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"reflect"
 
-	"github.com/jnsoft/gamma/util/hex/hexutil"
+	"github.com/jnsoft/gamma/util/hexutil"
 )
 
 // Lengths of hashes and addresses in bytes.
