@@ -3,7 +3,6 @@ package database
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jnsoft/gamma/util/misc"
 	"github.com/jnsoft/gamma/util/security"
-	"golang.org/x/crypto/sha3"
 )
 
 type Tx struct {
@@ -226,47 +224,4 @@ func (t SignedTx) IsAuthentic() (bool, error) {
 	recoveredAccount := common.BytesToAddress(recoveredPubKeyBytesHash[12:])
 
 	return recoveredAccount.Hex() == t.From.Hex(), nil
-}
-
-// String implements fmt.Stringer.
-func (a Address) String() string {
-	return a.Hex()
-}
-
-// Hex returns an EIP55-compliant hex string representation of the address.
-func (a Address) Hex() string {
-	return string(a.checksumHex())
-}
-
-func (a *Address) checksumHex() []byte {
-	buf := a.hex()
-
-	// compute checksum
-	sha := sha3.NewLegacyKeccak256()
-	sha.Write(buf[2:])
-	hash := sha.Sum(nil)
-	for i := 2; i < len(buf); i++ {
-		hashByte := hash[(i-2)/2]
-		if i%2 == 0 {
-			hashByte = hashByte >> 4
-		} else {
-			hashByte &= 0xf
-		}
-		if buf[i] > '9' && hashByte > 7 {
-			buf[i] -= 32
-		}
-	}
-	return buf[:]
-}
-
-func (a Address) hex() []byte {
-	var buf [len(a)*2 + 2]byte
-	copy(buf[:2], "0x")
-	hex.Encode(buf[2:], a[:])
-	return buf[:]
-}
-
-// UnmarshalJSON parses a hash in hex syntax.
-func (a *Address) UnmarshalJSON(input []byte) error {
-	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
 }
