@@ -336,9 +336,7 @@ func applySimpleBlock(b SimpleBlock, s *State) error {
 		return err
 	}
 
-	if !IsBlockHashValid(hash, s.miningDifficulty) {
-		return fmt.Errorf("invalid block hash %x", hash)
-	}
+	fmt.Printf("Hash: %x", hash)
 
 	err = applySimpleTXs(b.TXs, s)
 	if err != nil {
