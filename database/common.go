@@ -86,3 +86,7 @@ func (a Address) hex() []byte {
 func (a *Address) UnmarshalJSON(input []byte) error {
 	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
 }
+
+func (v *Address) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("MyType", input, v[:])
+}

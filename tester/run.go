@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -10,31 +9,20 @@ import (
 	"github.com/jnsoft/gamma/util/hexutil"
 )
 
+const a1 string = "0x0000000000000000000000000000000000000001"
+const a2 string = "0x0000000000000000000000000000000000000002"
+const a3 string = "0x0000000000000000000000000000000000000003"
+
 func main() {
 
-	var genesisJson = `{
-		"symbol": "TGL",
-		"balances": {
-		  "0x1": 1000000,
-		  "0x2": 1
-		},
-		"fork_tip_1": 35
-	  }`
-
-	data, err := json.Marshal(genesisJson) //Not Required
-	if err != nil {
-		fmt.Println("Error with marchal JSON: " + err.Error())
-	}
-	fmt.Println("data ", data)
-
-	var res database.Genesis
-
-	err = json.Unmarshal(data, &res)
-	if err != nil {
-		fmt.Println("Error with marchal JSON: " + err.Error())
-	} else {
-		fmt.Printf("Read a message from %v     %v \n", res.Symbol, res.ForkTIP1)
-	}
+	//var v1, v2 database.Address
+	//fmt.Println("v1 error:", json.Unmarshal([]byte(`"0x01"`), &v1))
+	//fmt.Println("v2 error:", json.Unmarshal([]byte(`"0x0102030405060708091011121314151617181920"`), &v2))
+	//fmt.Println("v2:", v2)
+	// Output:
+	// v1 error: hex string has length 2, want 10 for MyType
+	// v2 error: <nil>
+	// v2: 0x0101010101
 
 	t := time.Now()
 	fmt.Println(t.Month())
@@ -52,13 +40,13 @@ func main() {
 	}
 	defer state.Close()
 
-	database.NewSimpleTx(database.Address(hexutil.MustDecode("0x01")), database.Address(hexutil.MustDecode("0x01")), 1, "")
+	database.NewSimpleTx(database.Address(hexutil.MustDecode(a1)), database.Address(hexutil.MustDecode(a1)), 1, "")
 
 	block0 := database.NewSimpleBlock(
 		database.Hash{},
 		[]database.SimpleTx{
-			database.NewSimpleTxStringAddress("0x01", "0x02", 3, ""),
-			database.NewSimpleTxStringAddress("0x01", "0x02", 5, ""),
+			database.NewSimpleTxStringAddress(a1, a2, 3, ""),
+			database.NewSimpleTxStringAddress(a1, a2, 5, ""),
 		},
 	)
 
@@ -68,12 +56,12 @@ func main() {
 	block1 := database.NewSimpleBlock(
 		block0hash,
 		[]database.SimpleTx{
-			database.NewSimpleTxStringAddress("0x01", "0x02", 2000, ""),
-			database.NewSimpleTxStringAddress("0x01", "0x01", 100, "mint"),
-			database.NewSimpleTxStringAddress("0x02", "0x01", 1, ""),
-			database.NewSimpleTxStringAddress("0x02", "0x03", 1000, ""),
-			database.NewSimpleTxStringAddress("0x02", "0x01", 50, ""),
-			database.NewSimpleTxStringAddress("0x01", "0x01", 100, "mint"),
+			database.NewSimpleTxStringAddress(a1, a2, 2000, ""),
+			database.NewSimpleTxStringAddress(a1, a1, 100, "mint"),
+			database.NewSimpleTxStringAddress(a2, a1, 1, ""),
+			database.NewSimpleTxStringAddress(a2, a3, 1000, ""),
+			database.NewSimpleTxStringAddress(a2, a1, 50, ""),
+			database.NewSimpleTxStringAddress(a1, a1, 100, "mint"),
 		},
 	)
 
