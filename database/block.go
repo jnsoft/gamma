@@ -1,36 +1,19 @@
 package database
 
 import (
-	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/jnsoft/gamma/util/misc"
+	"github.com/jnsoft/gamma/util/security"
 )
 
 const BlockReward = 100
 
-type Hash [32]byte
-
-func (h Hash) Hex() string {
-	return hex.EncodeToString(h[:])
-}
-
-func (h Hash) MarshalText() ([]byte, error) {
-	return []byte(h.Hex()), nil
-}
-
-func (h *Hash) UnmarshalText(data []byte) error {
-	_, err := hex.Decode(h[:], data)
-	return err
-}
-
-func (h Hash) IsEmpty() bool {
-	emptyHash := Hash{}
-
-	return bytes.Equal(emptyHash[:], h[:])
+type SimpleBlock struct {
+	Header BlockHeader `json:"header"`
+	TXs    []SimpleTx  `json:"payload"` // new transactions only (payload)
 }
 
 type Block struct {
@@ -39,11 +22,11 @@ type Block struct {
 }
 
 type BlockHeader struct {
-	Parent Hash           `json:"parent"` // parent block reference
-	Number uint64         `json:"number"`
-	Nonce  uint32         `json:"nonce"`
-	Time   uint64         `json:"time"`
-	Miner  common.Address `json:"miner"`
+	Parent Hash    `json:"parent"` // parent block reference
+	Number uint64  `json:"number"`
+	Nonce  uint32  `json:"nonce"`
+	Time   uint64  `json:"time"`
+	Miner  Address `json:"miner"`
 }
 
 type BlockFS struct {
@@ -51,8 +34,17 @@ type BlockFS struct {
 	Value Block `json:"block"`
 }
 
-func NewBlock(parent Hash, number uint64, nonce uint32, time uint64, miner common.Address, txs []SignedTx) Block {
-	return Block{BlockHeader{parent, number, nonce, time, miner}, txs}
+type SimpleBlockFS struct {
+	Key   Hash        `json:"hash"`
+	Value SimpleBlock `json:"block"`
+}
+
+func NewSimpleBlock(parent Hash, number uint64, miner Address, txs []SimpleTx) SimpleBlock {
+	return SimpleBlock{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
+}
+
+func NewBlock(parent Hash, number uint64, miner Address, txs []SignedTx) Block {
+	return Block{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
 func (b Block) Hash() (Hash, error) {
@@ -64,7 +56,26 @@ func (b Block) Hash() (Hash, error) {
 	return sha256.Sum256(blockJson), nil
 }
 
+func (b SimpleBlock) Hash() (Hash, error) {
+	blockJson, err := json.Marshal(b)
+	if err != nil {
+		return Hash{}, err
+	}
+
+	return sha256.Sum256(blockJson), nil
+}
+
 func (b Block) GasReward() uint {
+	reward := uint(0)
+
+	for _, tx := range b.TXs {
+		reward += tx.GasCost()
+	}
+
+	return reward
+}
+
+func (b SimpleBlock) GasReward() uint {
 	reward := uint(0)
 
 	for _, tx := range b.TXs {

@@ -9,14 +9,24 @@ import (
 )
 
 func main() {
+
+	//var v1, v2 database.Address
+	//fmt.Println("v1 error:", json.Unmarshal([]byte(`"0x01"`), &v1))
+	//fmt.Println("v2 error:", json.Unmarshal([]byte(`"0x0102030405060708091011121314151617181920"`), &v2))
+	//fmt.Println("v2:", v2)
+	// Output:
+	// v1 error: hex string has length 2, want 10 for MyType
+	// v2 error: <nil>
+	// v2: 0x0101010101
+
 	t := time.Now()
 	fmt.Println(t.Month())
 	fmt.Println(t.Day())
 	fmt.Println(t.Year())
 
-	// TODO: hantera 
-	// signera transaktioner? 
-	// 
+	// TODO: hantera
+	// signera transaktioner?
+	//
 
 	state, err := database.NewStateFromDisk("/tmp/gammadb", 1) // kommer skapa /tmp/gammadb/database/ och filer där
 	if err != nil {
@@ -25,34 +35,36 @@ func main() {
 	}
 	defer state.Close()
 
-	block0 := database.NewBlock(
+	// database.NewSimpleTx(database.Address(hexutil.MustDecode(a1)), database.Address(hexutil.MustDecode(a1)), 1, "")
+
+	block0 := database.NewSimpleBlock(
 		database.Hash{},
-		uint64(time.Now().Unix()),
-		[]database.Tx{
-			database.NewTx("andrej", "andrej", 3, ""),
-			database.NewTx("andrej", "andrej", 700, "reward"),
+		0,
+		database.ToAddress(database.A0),
+		[]database.SimpleTx{
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 3, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 5, ""),
 		},
 	)
 
-	state.AddBlock(block0)
+	state.AddSimpleBlock(block0)
 	block0hash, _ := state.Persist()
 
-	block1 := database.NewBlock(
+	block1 := database.NewSimpleBlock(
 		block0hash,
-		uint64(time.Now().Unix()),
-		[]database.Tx{
-			database.NewTx("andrej", "babayaga", 2000, ""),
-			database.NewTx("andrej", "andrej", 100, "reward"),
-			database.NewTx("babayaga", "andrej", 1, ""),
-			database.NewTx("babayaga", "caesar", 1000, ""),
-			database.NewTx("babayaga", "andrej", 50, ""),
-			database.NewTx("andrej", "andrej", 600, "reward"),
+		1,
+		database.ToAddress(database.A0),
+		[]database.SimpleTx{
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 2000, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A1, 100, "mint"),
+			database.NewSimpleTxStringAddress(database.A2, database.A1, 1, ""),
+			database.NewSimpleTxStringAddress(database.A2, database.A3, 1000, ""),
+			database.NewSimpleTxStringAddress(database.A2, database.A1, 50, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A1, 100, "mint"),
 		},
 	)
 
-	state.AddBlock(block1)
+	state.AddSimpleBlock(block1)
 	state.Persist()
-		
-
 
 }

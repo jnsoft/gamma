@@ -17,8 +17,8 @@ type ErrRes struct {
 }
 
 type BalancesRes struct {
-	Hash     database.Hash           `json:"block_hash"`
-	Balances map[common.Address]uint `json:"balances"`
+	Hash     database.Hash             `json:"block_hash"`
+	Balances map[database.Address]uint `json:"balances"`
 }
 
 type TxAddReq struct {
@@ -41,7 +41,7 @@ type StatusRes struct {
 	KnownPeers  map[string]PeerNode `json:"peers_known"`
 	PendingTXs  []database.SignedTx `json:"pending_txs"`
 	NodeVersion string              `json:"node_version"`
-	Account     common.Address      `json:"account"`
+	Account     database.Address    `json:"account"`
 }
 
 type SyncRes struct {

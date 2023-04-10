@@ -5,7 +5,6 @@ import (
 	"os"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/database"
 	"github.com/jnsoft/gamma/node"
 	"github.com/spf13/cobra"
@@ -40,7 +39,7 @@ func balancesListCmd() *cobra.Command {
 			defer state.Close()
 
 			// sort keys from hashset
-			keys := make([]common.Address, 0, len(state.Balances))
+			keys := make([]database.Address, 0, len(state.Balances))
 			for k := range state.Balances {
 				keys = append(keys, k)
 			}
