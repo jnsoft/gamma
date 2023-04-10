@@ -6,12 +6,7 @@ import (
 	"time"
 
 	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/util/hexutil"
 )
-
-const a1 string = "0x0000000000000000000000000000000000000001"
-const a2 string = "0x0000000000000000000000000000000000000002"
-const a3 string = "0x0000000000000000000000000000000000000003"
 
 func main() {
 
@@ -40,13 +35,15 @@ func main() {
 	}
 	defer state.Close()
 
-	database.NewSimpleTx(database.Address(hexutil.MustDecode(a1)), database.Address(hexutil.MustDecode(a1)), 1, "")
+	// database.NewSimpleTx(database.Address(hexutil.MustDecode(a1)), database.Address(hexutil.MustDecode(a1)), 1, "")
 
 	block0 := database.NewSimpleBlock(
 		database.Hash{},
+		0,
+		database.ToAddress(database.A0),
 		[]database.SimpleTx{
-			database.NewSimpleTxStringAddress(a1, a2, 3, ""),
-			database.NewSimpleTxStringAddress(a1, a2, 5, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 3, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 5, ""),
 		},
 	)
 
@@ -55,13 +52,15 @@ func main() {
 
 	block1 := database.NewSimpleBlock(
 		block0hash,
+		1,
+		database.ToAddress(database.A0),
 		[]database.SimpleTx{
-			database.NewSimpleTxStringAddress(a1, a2, 2000, ""),
-			database.NewSimpleTxStringAddress(a1, a1, 100, "mint"),
-			database.NewSimpleTxStringAddress(a2, a1, 1, ""),
-			database.NewSimpleTxStringAddress(a2, a3, 1000, ""),
-			database.NewSimpleTxStringAddress(a2, a1, 50, ""),
-			database.NewSimpleTxStringAddress(a1, a1, 100, "mint"),
+			database.NewSimpleTxStringAddress(database.A1, database.A2, 2000, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A1, 100, "mint"),
+			database.NewSimpleTxStringAddress(database.A2, database.A1, 1, ""),
+			database.NewSimpleTxStringAddress(database.A2, database.A3, 1000, ""),
+			database.NewSimpleTxStringAddress(database.A2, database.A1, 50, ""),
+			database.NewSimpleTxStringAddress(database.A1, database.A1, 100, "mint"),
 		},
 	)
 

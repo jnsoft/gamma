@@ -12,9 +12,8 @@ import (
 const BlockReward = 100
 
 type SimpleBlock struct {
-	Parent Hash       `json:"parent"` // parent block reference
-	Time   uint64     `json:"time"`
-	TXs    []SimpleTx `json:"payload"` // new transactions only (payload)
+	Header BlockHeader `json:"header"`
+	TXs    []SimpleTx  `json:"payload"` // new transactions only (payload)
 }
 
 type Block struct {
@@ -40,8 +39,8 @@ type SimpleBlockFS struct {
 	Value SimpleBlock `json:"block"`
 }
 
-func NewSimpleBlock(parent Hash, txs []SimpleTx) SimpleBlock {
-	return SimpleBlock{parent, misc.GetTime(), txs}
+func NewSimpleBlock(parent Hash, number uint64, miner Address, txs []SimpleTx) SimpleBlock {
+	return SimpleBlock{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
 func NewBlock(parent Hash, number uint64, miner Address, txs []SignedTx) Block {
@@ -67,6 +66,16 @@ func (b SimpleBlock) Hash() (Hash, error) {
 }
 
 func (b Block) GasReward() uint {
+	reward := uint(0)
+
+	for _, tx := range b.TXs {
+		reward += tx.GasCost()
+	}
+
+	return reward
+}
+
+func (b SimpleBlock) GasReward() uint {
 	reward := uint(0)
 
 	for _, tx := range b.TXs {

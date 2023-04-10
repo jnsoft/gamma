@@ -28,7 +28,7 @@ type State struct {
 
 	dbFile *os.File
 
-	latestBlock     Block
+	latestBlock     SimpleBlock
 	latestBlockHash Hash
 	hasGenesisBlock bool
 
@@ -66,7 +66,7 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 
 	scanner := bufio.NewScanner(f)
 
-	state := &State{balances, account2nonce, nil, f, Block{}, Hash{}, false, miningDifficulty, gen.ForkTIP1, map[string]int64{}, map[uint64]int64{}}
+	state := &State{balances, account2nonce, nil, f, SimpleBlock{}, Hash{}, false, miningDifficulty, gen.ForkTIP1, map[string]int64{}, map[uint64]int64{}}
 
 	// set file position
 	filePos := int64(0)
@@ -82,13 +82,15 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 			break
 		}
 
-		var blockFs BlockFS
+		var blockFs SimpleBlockFS
 		err = json.Unmarshal(blockFsJson, &blockFs)
 		if err != nil {
 			return nil, err
 		}
 
-		err = applyBlock(blockFs.Value, state)
+		//err = applyBlock(blockFs.Value, state)
+		err = applySimpleBlock(blockFs.Value, state)
+
 		if err != nil {
 			return nil, err
 		}
@@ -106,63 +108,64 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 	return state, nil
 }
 
-func (s *State) AddBlocks(blocks []Block) error {
-	for _, b := range blocks {
-		_, err := s.AddBlock(b)
-		if err != nil {
-			return err
+/*
+	func (s *State) AddBlocks(blocks []Block) error {
+		for _, b := range blocks {
+			_, err := s.AddBlock(b)
+			if err != nil {
+				return err
+			}
 		}
+
+		return nil
 	}
 
-	return nil
-}
+	func (s *State) AddBlock(b Block) (Hash, error) {
+		pendingState := s.Copy()
 
-func (s *State) AddBlock(b Block) (Hash, error) {
-	pendingState := s.Copy()
+		err := applyBlock(b, &pendingState)
+		if err != nil {
+			return Hash{}, err
+		}
 
-	err := applyBlock(b, &pendingState)
-	if err != nil {
-		return Hash{}, err
+		blockHash, err := b.Hash()
+		if err != nil {
+			return Hash{}, err
+		}
+
+		blockFs := BlockFS{blockHash, b}
+
+		blockFsJson, err := json.Marshal(blockFs)
+		if err != nil {
+			return Hash{}, err
+		}
+
+		fmt.Printf("\nPersisting new Block to disk:\n")
+		fmt.Printf("\t%s\n", blockFsJson)
+
+		// get file pos for cache
+		fs, _ := s.dbFile.Stat()
+		filePos := fs.Size() + 1
+
+		_, err = s.dbFile.Write(append(blockFsJson, '\n'))
+		if err != nil {
+			return Hash{}, err
+		}
+
+		// set search caches
+		s.HashCache[blockFs.Key.Hex()] = filePos
+		s.HeightCache[blockFs.Value.Header.Number] = filePos
+
+		s.Balances = pendingState.Balances
+		s.Account2Nonce = pendingState.Account2Nonce
+		s.latestBlockHash = blockHash
+		s.latestBlock = b
+		s.hasGenesisBlock = true
+		s.miningDifficulty = pendingState.miningDifficulty
+
+		return blockHash, nil
 	}
-
-	blockHash, err := b.Hash()
-	if err != nil {
-		return Hash{}, err
-	}
-
-	blockFs := BlockFS{blockHash, b}
-
-	blockFsJson, err := json.Marshal(blockFs)
-	if err != nil {
-		return Hash{}, err
-	}
-
-	fmt.Printf("\nPersisting new Block to disk:\n")
-	fmt.Printf("\t%s\n", blockFsJson)
-
-	// get file pos for cache
-	fs, _ := s.dbFile.Stat()
-	filePos := fs.Size() + 1
-
-	_, err = s.dbFile.Write(append(blockFsJson, '\n'))
-	if err != nil {
-		return Hash{}, err
-	}
-
-	// set search caches
-	s.HashCache[blockFs.Key.Hex()] = filePos
-	s.HeightCache[blockFs.Value.Header.Number] = filePos
-
-	s.Balances = pendingState.Balances
-	s.Account2Nonce = pendingState.Account2Nonce
-	s.latestBlockHash = blockHash
-	s.latestBlock = b
-	s.hasGenesisBlock = true
-	s.miningDifficulty = pendingState.miningDifficulty
-
-	return blockHash, nil
-}
-
+*/
 func (s *State) AddSimpleBlock(b SimpleBlock) error {
 	for _, tx := range b.TXs {
 		if err := s.AddSimpleTx(tx); err != nil {
@@ -200,7 +203,7 @@ func (s *State) applySimple(tx SimpleTx) error {
 }
 
 func (s *State) Persist() (Hash, error) {
-	block := NewSimpleBlock(s.latestBlockHash, s.txMempool)
+	block := NewSimpleBlock(s.LatestBlockHash(), s.NextBlockNumber(), ToAddress(A0), s.txMempool)
 	blockHash, err := block.Hash()
 	if err != nil {
 		return Hash{}, err
@@ -234,7 +237,7 @@ func (s *State) NextBlockNumber() uint64 {
 	return s.LatestBlock().Header.Number + 1
 }
 
-func (s *State) LatestBlock() Block {
+func (s *State) LatestBlock() SimpleBlock {
 	return s.latestBlock
 }
 
@@ -317,6 +320,41 @@ func applyBlock(b Block, s *State) error {
 	return nil
 }
 
+func applySimpleBlock(b SimpleBlock, s *State) error {
+	nextExpectedBlockNumber := s.NextBlockNumber()
+
+	if s.hasGenesisBlock && b.Header.Number != nextExpectedBlockNumber {
+		return fmt.Errorf("next expected block must be '%d' not '%d'", nextExpectedBlockNumber, b.Header.Number)
+	}
+
+	if s.hasGenesisBlock && s.latestBlock.Header.Number > 0 && !reflect.DeepEqual(b.Header.Parent, s.latestBlockHash) {
+		return fmt.Errorf("next block parent hash must be '%x' not '%x'", s.latestBlockHash, b.Header.Parent)
+	}
+
+	hash, err := b.Hash()
+	if err != nil {
+		return err
+	}
+
+	if !IsBlockHashValid(hash, s.miningDifficulty) {
+		return fmt.Errorf("invalid block hash %x", hash)
+	}
+
+	err = applySimpleTXs(b.TXs, s)
+	if err != nil {
+		return err
+	}
+
+	s.Balances[b.Header.Miner] += BlockReward
+	if s.IsTIP1Fork() {
+		s.Balances[b.Header.Miner] += b.GasReward()
+	} else {
+		s.Balances[b.Header.Miner] += uint(len(b.TXs)) * TxFee
+	}
+
+	return nil
+}
+
 func applyTXs(txs []SignedTx, s *State) error {
 	sort.Slice(txs, func(i, j int) bool {
 		return txs[i].Time < txs[j].Time
@@ -332,8 +370,37 @@ func applyTXs(txs []SignedTx, s *State) error {
 	return nil
 }
 
+func applySimpleTXs(txs []SimpleTx, s *State) error {
+	sort.Slice(txs, func(i, j int) bool {
+		return txs[i].Time < txs[j].Time
+	})
+
+	for _, tx := range txs {
+		err := ApplySimpleTx(tx, s)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func ApplyTx(tx SignedTx, s *State) error {
 	err := ValidateTx(tx, s)
+	if err != nil {
+		return err
+	}
+
+	s.Balances[tx.From] -= tx.Cost(s.IsTIP1Fork())
+	s.Balances[tx.To] += tx.Value
+
+	s.Account2Nonce[tx.From] = tx.Nonce
+
+	return nil
+}
+
+func ApplySimpleTx(tx SimpleTx, s *State) error {
+	err := ValidateSimpleTx(tx, s)
 	if err != nil {
 		return err
 	}
@@ -378,6 +445,28 @@ func ValidateTx(tx SignedTx, s *State) error {
 		if tx.Gas != 0 || tx.GasPrice != 0 {
 			return fmt.Errorf("invalid TX. `Gas` and `GasPrice` can't be populated before TIP1 fork is active")
 		}
+	}
+
+	if tx.Cost(s.IsTIP1Fork()) > s.Balances[tx.From] {
+		return fmt.Errorf("wrong TX. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From.String(), s.Balances[tx.From], tx.Cost(s.IsTIP1Fork()))
+	}
+
+	return nil
+}
+
+func ValidateSimpleTx(tx SimpleTx, s *State) error {
+	ok, err := tx.IsAuthentic()
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return fmt.Errorf("wrong TX. Sender '%s' is forged", tx.From.String())
+	}
+
+	expectedNonce := s.GetNextAccountNonce(tx.From)
+	if tx.Nonce != expectedNonce {
+		return fmt.Errorf("wrong TX. Sender '%s' next nonce must be '%d', not '%d'", tx.From.String(), expectedNonce, tx.Nonce)
 	}
 
 	if tx.Cost(s.IsTIP1Fork()) > s.Balances[tx.From] {

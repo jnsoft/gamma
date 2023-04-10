@@ -82,8 +82,16 @@ func (t Tx) Cost(isTip1Fork bool) uint {
 	return t.Value + TxFee
 }
 
+func (t SimpleTx) Cost(isTip1Fork bool) uint {
+	return 0
+}
+
 func (t Tx) GasCost() uint {
 	return t.Gas * t.GasPrice
+}
+
+func (t SimpleTx) GasCost() uint {
+	return 0
 }
 
 func (t Tx) Hash() (Hash, error) {
@@ -224,4 +232,8 @@ func (t SignedTx) IsAuthentic() (bool, error) {
 	recoveredAccount := common.BytesToAddress(recoveredPubKeyBytesHash[12:])
 
 	return recoveredAccount.Hex() == t.From.Hex(), nil
+}
+
+func (t SimpleTx) IsAuthentic() (bool, error) {
+	return true, nil
 }

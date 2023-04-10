@@ -15,6 +15,11 @@ const (
 	HashLength = 32
 	// AddressLength is the expected length of the address
 	AddressLength = 20
+
+	A0 string = "0x0000000000000000000000000000000000000009"
+	A1 string = "0x0000000000000000000000000000000000000001"
+	A2 string = "0x0000000000000000000000000000000000000002"
+	A3 string = "0x0000000000000000000000000000000000000003"
 )
 
 var (
@@ -26,8 +31,15 @@ type Hash [HashLength]byte
 
 type Address [AddressLength]byte
 
+////////////////// HASH //////////////
+
 func (h Hash) Hex() string {
 	return hex.EncodeToString(h[:])
+}
+
+func (h Hash) IsEmpty() bool {
+	emptyHash := Hash{}
+	return bytes.Equal(emptyHash[:], h[:])
 }
 
 func (h Hash) MarshalText() ([]byte, error) {
@@ -39,9 +51,10 @@ func (h *Hash) UnmarshalText(data []byte) error {
 	return err
 }
 
-func (h Hash) IsEmpty() bool {
-	emptyHash := Hash{}
-	return bytes.Equal(emptyHash[:], h[:])
+////////////////// ADDRESS //////////////
+
+func ToAddress(hex string) Address {
+	return Address(hexutil.MustDecode(hex))
 }
 
 // String implements fmt.Stringer.
@@ -80,6 +93,10 @@ func (a Address) hex() []byte {
 	copy(buf[:2], "0x")
 	hex.Encode(buf[2:], a[:])
 	return buf[:]
+}
+
+func (a Address) MarshalText() ([]byte, error) {
+	return []byte(a.Hex()), nil
 }
 
 // UnmarshalJSON parses a hash in hex syntax.

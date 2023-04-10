@@ -85,10 +85,10 @@ func checkNumberText(input []byte) (raw []byte, err error) {
 
 // MarshalText implements encoding.TextMarshaler
 func (b Bytes) MarshalText() ([]byte, error) {
-	result := make([]byte, len(b)*2+2)
-	copy(result, `0x`)
-	hex.Encode(result[2:], b)
-	return result, nil
+	res := make([]byte, len(b)*2+2)
+	copy(res, `0x`)
+	hex.Encode(res[2:], b)
+	return res, nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
