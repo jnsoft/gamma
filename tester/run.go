@@ -1,15 +1,41 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/jnsoft/gamma/database"
+	"github.com/jnsoft/gamma/util/hexutil"
 )
 
 func main() {
+
+	var genesisJson = `{
+		"symbol": "TGL",
+		"balances": {
+		  "0x1": 1000000,
+		  "0x2": 1
+		},
+		"fork_tip_1": 35
+	  }`
+
+	data, err := json.Marshal(genesisJson) //Not Required
+	if err != nil {
+		fmt.Println("Error with marchal JSON: " + err.Error())
+	}
+	fmt.Println("data ", data)
+
+	var res database.Genesis
+
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		fmt.Println("Error with marchal JSON: " + err.Error())
+	} else {
+		fmt.Printf("Read a message from %v     %v \n", res.Symbol, res.ForkTIP1)
+	}
+
 	t := time.Now()
 	fmt.Println(t.Month())
 	fmt.Println(t.Day())

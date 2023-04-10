@@ -23,6 +23,7 @@ var (
 )
 
 type Hash [HashLength]byte
+
 type Address [AddressLength]byte
 
 func (h Hash) Hex() string {
