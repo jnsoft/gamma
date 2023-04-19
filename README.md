@@ -19,3 +19,12 @@
 * Do we need it?
 
 [Check with Snyk Advisor](https://snyk.io/advisor)
+
+## Functional programming principles
+Helps produce readable, predictable and testable code
+* Pure functions (given the same input always returns the same result and no side effects, or simply the function can be substituted by a lookup table lika a mathematical function)
+* Referential transparency (bound variables or subexpressions can be replaced by it's value without changing the meaning of the program, regardless of the order in which they are evaluated)
+* Immutability (once a value is declared, it is unchangeable)
+* Functions as first class entities (functions can be passed as arguments, returned from other functions, stored in data structures and assigned to variables)
+* Higher order funtions (functions that takes functions as values or returns functions, like map, filter and reduce)
+
