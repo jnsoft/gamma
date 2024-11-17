@@ -166,6 +166,7 @@ func NewStateFromDisk(dataDir string, miningDifficulty uint) (*State, error) {
 		return blockHash, nil
 	}
 */
+
 func (s *State) AddSimpleBlock(b SimpleBlock) error {
 	for _, tx := range b.TXs {
 		if err := s.AddSimpleTx(tx); err != nil {

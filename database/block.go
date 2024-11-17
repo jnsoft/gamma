@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jnsoft/gamma/common"
 	"github.com/jnsoft/gamma/util/misc"
 	"github.com/jnsoft/gamma/util/security"
 )
@@ -22,44 +23,44 @@ type Block struct {
 }
 
 type BlockHeader struct {
-	Parent Hash    `json:"parent"` // parent block reference
-	Number uint64  `json:"number"`
-	Nonce  uint32  `json:"nonce"`
-	Time   uint64  `json:"time"`
-	Miner  Address `json:"miner"`
+	Parent common.Hash    `json:"parent"` // parent block reference
+	Number uint64         `json:"number"`
+	Nonce  uint32         `json:"nonce"`
+	Time   uint64         `json:"time"`
+	Miner  common.Address `json:"miner"`
 }
 
 type BlockFS struct {
-	Key   Hash  `json:"hash"`
-	Value Block `json:"block"`
+	Key   common.Hash `json:"hash"`
+	Value Block       `json:"block"`
 }
 
 type SimpleBlockFS struct {
-	Key   Hash        `json:"hash"`
+	Key   common.Hash `json:"hash"`
 	Value SimpleBlock `json:"block"`
 }
 
-func NewSimpleBlock(parent Hash, number uint64, miner Address, txs []SimpleTx) SimpleBlock {
+func NewSimpleBlock(parent common.Hash, number uint64, miner common.Address, txs []SimpleTx) SimpleBlock {
 	return SimpleBlock{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
-func NewBlock(parent Hash, number uint64, miner Address, txs []SignedTx) Block {
+func NewBlock(parent common.Hash, number uint64, miner common.Address, txs []SignedTx) Block {
 	return Block{BlockHeader{parent, number, security.GenerateNonce(), misc.GetTime(), miner}, txs}
 }
 
-func (b Block) Hash() (Hash, error) {
+func (b Block) Hash() (common.Hash, error) {
 	blockJson, err := json.Marshal(b)
 	if err != nil {
-		return Hash{}, err
+		return common.Hash{}, err
 	}
 
 	return sha256.Sum256(blockJson), nil
 }
 
-func (b SimpleBlock) Hash() (Hash, error) {
+func (b SimpleBlock) Hash() (common.Hash, error) {
 	blockJson, err := json.Marshal(b)
 	if err != nil {
-		return Hash{}, err
+		return common.Hash{}, err
 	}
 
 	return sha256.Sum256(blockJson), nil
@@ -85,7 +86,7 @@ func (b SimpleBlock) GasReward() uint {
 	return reward
 }
 
-func IsBlockHashValid(hash Hash, miningDifficulty uint) bool {
+func IsBlockHashValid(hash common.Hash, miningDifficulty uint) bool {
 	zeroesCount := uint(0)
 
 	for i := uint(0); i < miningDifficulty; i++ {

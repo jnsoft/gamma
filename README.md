@@ -1,5 +1,13 @@
 # gamma
 
+```
+go install github.com/go-delve/delve/cmd/dlv@latest
+```
+
+```
+go mod download
+```
+
 ## Code Review
 ### Input
 * new input?
@@ -13,7 +21,7 @@
 * Auditing - have we made a note of what happend?
 
 ### New dependencis
-* Truested?
+* Trusted?
 * Popular?
 * Well maintained?
 * Do we need it?
