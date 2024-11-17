@@ -1,15 +1,8 @@
 package node
 
 import (
-	"errors"
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-
 	/*"github.com/ethereum/go-ethereum/common"*/
 	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/wallet"
 )
 
 type ErrRes struct {
@@ -53,6 +46,7 @@ type AddPeerRes struct {
 	Error   string `json:"error"`
 }
 
+/*
 func listBalancesHandler(w http.ResponseWriter, r *http.Request, state *database.State) {
 	enableCors(&w)
 
@@ -188,3 +182,4 @@ func mempoolViewer(w http.ResponseWriter, r *http.Request, txs map[string]databa
 
 	writeRes(w, txs)
 }
+*/

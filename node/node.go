@@ -1,16 +1,7 @@
 package node
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
-
-	"github.com/caddyserver/certmagic"
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/jnsoft/gamma/database"
 )
 
 const DefaultBootstrapIp = "node.tgl.jnsoft.se"
@@ -48,6 +39,7 @@ type PeerNode struct {
 	connected bool
 }
 
+/*
 func (pn PeerNode) TcpAddress() string {
 	return fmt.Sprintf("%s:%d", pn.IP, pn.Port)
 }
@@ -349,3 +341,5 @@ func (n *Node) getPendingTXsAsArray() []database.SignedTx {
 
 	return txs
 }
+
+*/

@@ -1,14 +1,8 @@
 package node
 
 import (
-	"context"
-	"fmt"
-
-	"time"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/util/security"
 )
 
 type PendingBlock struct {
@@ -18,6 +12,8 @@ type PendingBlock struct {
 	miner  common.Address
 	txs    []database.SignedTx
 }
+
+/*
 
 func NewPendingBlock(parent database.Hash, number uint64, miner common.Address, txs []database.SignedTx) PendingBlock {
 	return PendingBlock{parent, number, uint64(time.Now().Unix()), miner, txs}
@@ -71,3 +67,5 @@ func Mine(ctx context.Context, pb PendingBlock, miningDifficulty uint) (database
 
 	return block, nil
 }
+
+*/

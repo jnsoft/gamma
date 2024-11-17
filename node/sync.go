@@ -1,15 +1,6 @@
 package node
 
-import (
-	"context"
-	"fmt"
-	"net/http"
-	"net/url"
-	"time"
-
-	"github.com/jnsoft/gamma/database"
-)
-
+/*
 func (n *Node) sync(ctx context.Context) error {
 	n.doSync()
 
@@ -226,3 +217,5 @@ func fetchBlocksFromPeer(peer PeerNode, fromBlock database.Hash) ([]database.Blo
 
 	return syncRes.Blocks, nil
 }
+
+*/

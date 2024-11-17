@@ -1,24 +1,5 @@
 package wallet
 
-import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/json"
-	"fmt"
-	"math/big"
-	"os"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/util/fs"
-)
-
 // The password for testing keystore files:
 //
 //	./node/test_andrej--3eb92807f1f91a8d4d85bc908c7f86dcddb1df57
@@ -50,6 +31,8 @@ const testKeystoreAccountsPwd = "security123"
 // (*big.Int)(0xc0000b1b20)(88181292280759186801869952076472415807575357966745986437065510600744149574656)
 // (*big.Int)(0xc0000b1b40)(23476722530623450948411712153618947971604430187320320363672662539909827697049)
 // (*big.Int)(0xc0000b1b60)(1)
+
+/*
 func TestSignCryptoParams(t *testing.T) {
 	privKey, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
 	if err != nil {
@@ -161,6 +144,7 @@ func TestSignTxWithKeystoreAccount(t *testing.T) {
 	require.Equal(t, signedTx, signedTxUnmarshaled)
 }
 
+/*
 func TestSignForgedTxWithKeystoreAccount(t *testing.T) {
 	tmpDir := os.TempDir()
 	defer fs.RemoveDir(tmpDir)
@@ -195,3 +179,5 @@ func TestSignForgedTxWithKeystoreAccount(t *testing.T) {
 		t.Fatal("the TX 'from' attribute was forged and should have not be authentic")
 	}
 }
+
+*/

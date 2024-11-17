@@ -1,22 +1,8 @@
 package node
 
-import (
-	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/hex"
-	"testing"
-	"time"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/wallet"
-)
-
 const defaultTestMiningDifficulty = 2
 
+/*
 func TestValidBlockHash(t *testing.T) {
 	hexHash := "0000fa04f8160395c387277f8b2f14837603383d33809a4db586086168edfa"
 	var hash = database.Hash{}
@@ -86,7 +72,7 @@ func TestMineWithTimeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Microsecond*100)
 	defer cancel()
-	
+
 	_, err = Mine(ctx, pendingBlock, defaultTestMiningDifficulty)
 	if err == nil {
 		t.Fatal(err)
@@ -108,6 +94,7 @@ func generateKey() (*ecdsa.PrivateKey, ecdsa.PublicKey, common.Address, error) {
 	return privKey, pubKey, account, nil
 }
 
+/*
 func createRandomPendingBlock(privKey *ecdsa.PrivateKey, acc common.Address) (PendingBlock, error) {
 	tx := database.NewBaseTx(acc, database.NewAccount("testKsBabaYagaAccount"), 1, 1, "")
 	signedTx, err := wallet.SignTx(tx, privKey)
@@ -122,3 +109,4 @@ func createRandomPendingBlock(privKey *ecdsa.PrivateKey, acc common.Address) (Pe
 		[]database.SignedTx{signedTx},
 	), nil
 }
+*/

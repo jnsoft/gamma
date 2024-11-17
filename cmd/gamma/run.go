@@ -1,15 +1,6 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"os"
-
-	"github.com/jnsoft/gamma/database"
-	"github.com/jnsoft/gamma/node"
-	"github.com/spf13/cobra"
-)
-
+/*
 func runCmd() *cobra.Command {
 	var runCmd = &cobra.Command{
 		Use:   "run",
@@ -61,3 +52,5 @@ func runCmd() *cobra.Command {
 
 	return runCmd
 }
+
+*/
