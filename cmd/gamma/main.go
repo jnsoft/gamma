@@ -34,7 +34,7 @@ func main() {
 
 	gammaCmd.AddCommand(versionCmd)
 	//gammaCmd.AddCommand(balancesCmd())
-	//gammaCmd.AddCommand(walletCmd())
+	gammaCmd.AddCommand(walletCmd())
 	// tbbCmd.AddCommand(runCmd())
 
 	err := gammaCmd.Execute()
@@ -56,7 +56,6 @@ func addKeystoreFlag(cmd *cobra.Command) {
 
 func getDataDirFromCmd(cmd *cobra.Command) string {
 	dataDir, _ := cmd.Flags().GetString(flagDataDir)
-
 	return fs.ExpandPath(dataDir)
 }
 

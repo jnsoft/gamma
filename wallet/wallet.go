@@ -2,36 +2,27 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/jnsoft/gamma/database"
 	"github.com/jnsoft/gamma/util/security"
 )
 
 const keystoreDirName = "keystore"
 
-const USE_RSA = true
-
-type KeyPair struct {
-	PrivateKey []byte
-	PublicKey  []byte
-}
-
-type KeyPairSerialized struct {
-	PrivateKey string `json:"private_key"`
-	PublicKey  string `json:"public_key"`
+type Key struct {
+	Id         uuid.UUID         // Unique identifier
+	Address    database.Address  // Ethereum address
+	PrivateKey *ecdsa.PrivateKey // ECDSA private key
 }
 
 // Wallet is a keypair with an ecrypted private key
 type Wallet struct {
-	Key KeyPair
+	Key Key
 	//PrivateKey string `json:"private_key"`
 	//PublicKey  string `json:"public_key"`
 }
@@ -40,16 +31,19 @@ func GetKeystoreDirPath(dataDir string) string {
 	return filepath.Join(dataDir, keystoreDirName)
 }
 
-func NewKeyPair() KeyPair {
-	return KeyPair{PublicKey: []byte{}, PrivateKey: []byte{}}
-}
-
-func NewWallet() Wallet {
-	return Wallet{NewKeyPair()}
+func NewKey() *Key {
+	ecdsa, _ := security.GenerateKey()
+	id, _ := uuid.NewRandom()
+	key := &Key{
+		Id:         id,
+		Address:    database.BytesToAdress(security.PubKeyToAddress(&ecdsa.PublicKey)),
+		PrivateKey: ecdsa,
+	}
+	return key
 }
 
 func CreateWallet(path, pwd string) (Wallet, error) {
-	keypair, err := createKeyPair(path, pwd, USE_RSA)
+	keypair, err := createKeyPair(USE_RSA)
 	if err != nil {
 		return NewWallet(), err
 	}
@@ -70,7 +64,16 @@ func GetWallet(path, pwd string) (Wallet, error) {
 	return w, nil
 }
 
+func (w Wallet) Address() string {
+	address := security.PubKeyToAddress(&w.Key.PrivateKey.PublicKey)
+	return hex.EncodeToString(address)
+}
+
 func (w Wallet) Hex() string {
+	return hex.EncodeToString(w.Key.PublicKey)
+}
+
+func (w Wallet) PublicKeyString() string {
 	return hex.EncodeToString(w.Key.PublicKey)
 }
 
@@ -80,52 +83,6 @@ func (w Wallet) PrivateKeyString() string {
 
 func (w Wallet) SignTx(tx database.Tx, from database.Address, pwd string) {
 	panic("not implemented")
-}
-
-func createKeyPair(path, password string, RSA bool) (KeyPair, error) {
-	if RSA {
-		privateKey, err := generateRsaKeyPair(2048)
-		if err != nil {
-			return NewKeyPair(), err
-		}
-		privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-		if err != nil {
-			return NewKeyPair(), err
-		}
-		publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-		if err != nil {
-			return NewKeyPair(), err
-		}
-
-		return KeyPair{PrivateKey: privateKeyBytes, PublicKey: publicKeyBytes}, nil
-
-	} else { // Elliptic Curve
-		privateKey, err := generateEcKeyPair()
-		if err != nil {
-			return NewKeyPair(), err
-		}
-
-		publicKey := &privateKey.PublicKey
-
-		// what about publicKey.Y.Bytes() ?
-		return KeyPair{PrivateKey: privateKey.D.Bytes(), PublicKey: publicKey.X.Bytes()}, nil
-	}
-}
-
-func generateRsaKeyPair(bits int) (*rsa.PrivateKey, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
-	if err != nil {
-		return nil, err
-	}
-	return privateKey, nil
-}
-
-func generateEcKeyPair() (*ecdsa.PrivateKey, error) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	return privateKey, nil
 }
 
 func readKeyPairFromFile(path string) (KeyPair, error) {
@@ -186,8 +143,7 @@ func (w Wallet) saveToFile(path, pwd string) error {
 	if err != nil {
 		return err
 	}
-
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(GetKeystoreDirPath(path), data, 0644)
 }
 
 /*
@@ -259,23 +215,6 @@ func Verify(msg, sig []byte) (*ecdsa.PublicKey, error) {
 
 
 
-func NewRandomKey() (*keystore.Key, error) {
-	privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
 
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, err
-	}
-	key := &keystore.Key{
-		Id:         id,
-		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
-		PrivateKey: privateKeyECDSA,
-	}
-
-	return key, nil
-}
 
 */
