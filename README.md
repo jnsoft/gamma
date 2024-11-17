@@ -3,10 +3,14 @@
 ```
 go install github.com/go-delve/delve/cmd/dlv@latest
 go get golang.org/x/term
+
+go run main.go
 ```
 
 ```
 go mod download
+go build -o gamma
+GOOS=windows GOARCH=amd64 go go build -o gamma
 ```
 
 ## Code Review

@@ -25,19 +25,19 @@ const flagBootstrapIp = "bootstrap-ip"
 const flagBootstrapPort = "bootstrap-port"
 
 func main() {
-	var tbbCmd = &cobra.Command{
+	var gammaCmd = &cobra.Command{
 		Use:   "gamma",
 		Short: "The Gamma Blockchain CLI",
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
 
-	tbbCmd.AddCommand(versionCmd)
-	tbbCmd.AddCommand(balancesCmd())
-	tbbCmd.AddCommand(walletCmd())
+	gammaCmd.AddCommand(versionCmd)
+	//gammaCmd.AddCommand(balancesCmd())
+	//gammaCmd.AddCommand(walletCmd())
 	// tbbCmd.AddCommand(runCmd())
 
-	err := tbbCmd.Execute()
+	err := gammaCmd.Execute()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
