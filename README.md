@@ -2,6 +2,7 @@
 
 ```
 go install github.com/go-delve/delve/cmd/dlv@latest
+go get golang.org/x/term
 ```
 
 ```

@@ -1,34 +1,39 @@
 package wallet
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/jnsoft/gamma/database"
 	"github.com/jnsoft/gamma/util/security"
-	/*"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"*/)
+)
 
 const keystoreDirName = "keystore"
+
+const USE_RSA = true
 
 type KeyPair struct {
 	PrivateKey []byte
 	PublicKey  []byte
 }
 
-type Wallet struct {
+type KeyPairSerialized struct {
 	PrivateKey string `json:"private_key"`
 	PublicKey  string `json:"public_key"`
+}
+
+// Wallet is a keypair with an ecrypted private key
+type Wallet struct {
+	Key KeyPair
+	//PrivateKey string `json:"private_key"`
+	//PublicKey  string `json:"public_key"`
 }
 
 func GetKeystoreDirPath(dataDir string) string {
@@ -40,95 +45,74 @@ func NewKeyPair() KeyPair {
 }
 
 func NewWallet() Wallet {
-	return Wallet{PrivateKey: "", PublicKey: ""}
+	return Wallet{NewKeyPair()}
 }
 
 func CreateWallet(path, pwd string) (Wallet, error) {
-	keypair, err := createKeyPair(path, pwd)
+	keypair, err := createKeyPair(path, pwd, USE_RSA)
 	if err != nil {
 		return NewWallet(), err
 	}
 
-	encryptedPrivateKey, err := security.AesEncrypt(keypair.PrivateKey, pwd)
-	publicKeyHex := hex.EncodeToString(keypair.PublicKey)
-	privateKeyHex := hex.EncodeToString(encryptedPrivateKey)
+	w := Wallet{Key: KeyPair{PublicKey: keypair.PublicKey, PrivateKey: keypair.PrivateKey}}
 
-	w := Wallet{PrivateKey: privateKeyHex, PublicKey: publicKeyHex}
-
-	if err := w.saveToFile(path); err != nil {
+	if err := w.saveToFile(path, pwd); err != nil {
 		return NewWallet(), err
 	}
 	return w, nil
 }
 
 func GetWallet(path, pwd string) (Wallet, error) {
-	keyPair, err := readKeyPairFromFile(path, pwd)
+	w, err := readWalletFromFile(path, pwd)
 	if err != nil {
-		fmt.Println("Error:", err)
-		panic(errors.New("read wallet failed"))
+		return NewWallet(), err
 	}
-	return keyPair
+	return w, nil
 }
 
-func keyPairToWallet(keyPair KeyPair) (Wallet, error) {
-	privateKey, err := hex.DecodeString(keyPair.PrivateKey)
-	if err != nil {
-		return Wallet{}, err
-	}
-	publicKey, err := hex.DecodeString(keyPair.PublicKey)
-	if err != nil {
-		return Wallet{}, err
-	}
-	return Wallet{PrivateKey: privateKey, PublicKey: publicKey}, nil
+func (w Wallet) Hex() string {
+	return hex.EncodeToString(w.Key.PublicKey)
 }
 
-func walletToKeyPair(wallet Wallet) KeyPair {
-	return KeyPair{PrivateKey: hex.EncodeToString(wallet.PrivateKey), PublicKey: hex.EncodeToString(wallet.PublicKey)}
+func (w Wallet) PrivateKeyString() string {
+	return hex.EncodeToString(w.Key.PrivateKey)
 }
 
 func (w Wallet) SignTx(tx database.Tx, from database.Address, pwd string) {
 	panic("not implemented")
 }
 
-func createKeyPair(path, password string) (KeyPair, error) {
-	privateKey, err := generateKeyPair(2048)
-	if err != nil {
-		return NewKeyPair(), err
+func createKeyPair(path, password string, RSA bool) (KeyPair, error) {
+	if RSA {
+		privateKey, err := generateRsaKeyPair(2048)
+		if err != nil {
+			return NewKeyPair(), err
+		}
+		privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+		if err != nil {
+			return NewKeyPair(), err
+		}
+		publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+		if err != nil {
+			return NewKeyPair(), err
+		}
+
+		return KeyPair{PrivateKey: privateKeyBytes, PublicKey: publicKeyBytes}, nil
+
+	} else { // Elliptic Curve
+		privateKey, err := generateEcKeyPair()
+		if err != nil {
+			return NewKeyPair(), err
+		}
+
+		publicKey := &privateKey.PublicKey
+
+		// what about publicKey.Y.Bytes() ?
+		return KeyPair{PrivateKey: privateKey.D.Bytes(), PublicKey: publicKey.X.Bytes()}, nil
 	}
-	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-	if err != nil {
-		return NewKeyPair(), err
-	}
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return NewKeyPair(), err
-	}
-	return KeyPair{PrivateKey: privateKeyBytes, PublicKey: publicKeyBytes}, nil
 }
 
-func readKeyPairFromFile(path string, password string) (KeyPair, error) {
-	var keyPair KeyPair
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return keyPair, err
-	}
-	err = json.Unmarshal(data, &keyPair)
-	if err != nil {
-		return keyPair, err
-	}
-	encryptedPrivateKey, err := hex.DecodeString(keyPair.PrivateKey)
-	if err != nil {
-		return keyPair, err
-	}
-	decryptedPrivateKey, err := security.AesDecrypt(encryptedPrivateKey, password)
-	if err != nil {
-		return keyPair, err
-	}
-	keyPair.PrivateKey = string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: decryptedPrivateKey}))
-	return keyPair, nil
-}
-
-func generateKeyPair(bits int) (*rsa.PrivateKey, error) {
+func generateRsaKeyPair(bits int) (*rsa.PrivateKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err
@@ -136,11 +120,73 @@ func generateKeyPair(bits int) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func (w Wallet) saveToFile(path string) error {
-	data, err := json.Marshal(w)
+func generateEcKeyPair() (*ecdsa.PrivateKey, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
+}
+
+func readKeyPairFromFile(path string) (KeyPair, error) {
+	var keyPairSerialized KeyPairSerialized
+
+	// Read the JSON file
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return NewKeyPair(), err
+	}
+
+	// Unmarshal the JSON data into the serialized struct
+	err = json.Unmarshal(data, &keyPairSerialized)
+	if err != nil {
+		return NewKeyPair(), err
+	}
+
+	privateKey, err := hex.DecodeString(keyPairSerialized.PrivateKey)
+	if err != nil {
+		return NewKeyPair(), err
+	}
+
+	publicKey, err := hex.DecodeString(keyPairSerialized.PublicKey)
+	if err != nil {
+		return NewKeyPair(), err
+	}
+
+	return KeyPair{PrivateKey: privateKey, PublicKey: publicKey}, nil
+}
+
+func readWalletFromFile(path, pwd string) (Wallet, error) {
+
+	kp, err := readKeyPairFromFile(path)
+	if err != nil {
+		return NewWallet(), err
+	}
+
+	decryptedPrivateKey, err := security.AesEncrypt(kp.PrivateKey, pwd)
+	if err != nil {
+		return NewWallet(), err
+	}
+
+	return Wallet{Key: KeyPair{PublicKey: kp.PublicKey, PrivateKey: decryptedPrivateKey}}, nil
+}
+
+func (w Wallet) saveToFile(path, pwd string) error {
+	encryptedPrivateKey, err := security.AesEncrypt(w.Key.PrivateKey, pwd)
 	if err != nil {
 		return err
 	}
+
+	publicKeyHex := hex.EncodeToString(w.Key.PublicKey)
+	encryptedprivateKeyHex := hex.EncodeToString(encryptedPrivateKey)
+
+	keyPairSerialized := KeyPairSerialized{PrivateKey: encryptedprivateKeyHex, PublicKey: publicKeyHex}
+
+	data, err := json.Marshal(keyPairSerialized)
+	if err != nil {
+		return err
+	}
+
 	return os.WriteFile(path, data, 0644)
 }
 

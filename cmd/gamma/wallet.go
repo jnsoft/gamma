@@ -4,11 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	/*"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/cmd/utils"*/
+	"github.com/jnsoft/gamma/util/misc"
 	"github.com/jnsoft/gamma/wallet"
 	"github.com/spf13/cobra"
 )
@@ -35,10 +31,10 @@ func walletNewAccountCmd() *cobra.Command {
 		Use:   "new-account",
 		Short: "Creates a new account with a new set of a elliptic-curve Private + Public keys.",
 		Run: func(cmd *cobra.Command, args []string) {
-			password := getPassPhrase("Please enter a password to encrypt the new wallet:", true)
+			password, _ := misc.ReadPassword("Please enter a password to encrypt the new wallet:", true)
 			dataDir := getDataDirFromCmd(cmd)
 
-			acc, err := wallet.NewWallet(dataDir, password)
+			acc, err := wallet.CreateWallet(dataDir, password)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -60,29 +56,20 @@ func walletPrintPrivKeyCmd() *cobra.Command {
 		Short: "Unlocks keystore file and prints the Private + Public keys.",
 		Run: func(cmd *cobra.Command, args []string) {
 			ksFile, _ := cmd.Flags().GetString(flagKeystoreFile)
-			password := getPassPhrase("Please enter a password to decrypt the wallet:", false)
+			password, _ := misc.ReadPassword("Please enter a password to decrypt the wallet:", false)
 
-			keyJson, err := os.ReadFile(ksFile)
+			w, err := wallet.GetWallet(ksFile, password)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
 			}
 
-			key, err := keystore.DecryptKey(keyJson, password)
-			if err != nil {
-				fmt.Println(err.Error())
-				os.Exit(1)
-			}
-
-			spew.Dump(key)
+			fmt.Printf("Public key: %s\n", w.Hex())
+			fmt.Printf("Private key: %s\n", w.PrivateKeyString())
 		},
 	}
 
 	addKeystoreFlag(cmd)
 
 	return cmd
-}
-
-func getPassPhrase(prompt string, confirmation bool) string {
-	return utils.GetPassPhrase(prompt, confirmation)
 }
