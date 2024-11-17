@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
+	/*"github.com/ethereum/go-ethereum/common"*/
 	"github.com/jnsoft/gamma/database"
 	"github.com/jnsoft/gamma/wallet"
 )
@@ -69,7 +69,7 @@ func txAddHandler(w http.ResponseWriter, r *http.Request, node *Node) {
 
 	from := database.NewAccount(req.From)
 
-	if from.String() == common.HexToAddress("").String() {
+	if from.String() == database.ToAddress("").String() {
 		writeErrRes(w, fmt.Errorf("%s is an invalid 'from' sender", from.String()))
 		return
 	}
@@ -82,7 +82,7 @@ func txAddHandler(w http.ResponseWriter, r *http.Request, node *Node) {
 	nonce := node.state.GetNextAccountNonce(from)
 	tx := database.NewTx(from, database.NewAccount(req.To), req.Gas, req.GasPrice, req.Value, nonce, req.Data)
 
-	signedTx, err := wallet.SignTxWithKeystoreAccount(tx, from, req.FromPwd, wallet.GetKeystoreDirPath(node.dataDir))
+	signedTx, err := wallet.SignTx(tx, from, req.FromPwd)
 	if err != nil {
 		writeErrRes(w, err)
 		return

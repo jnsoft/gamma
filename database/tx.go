@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	/*"github.com/ethereum/go-ethereum/common"*/
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/jnsoft/gamma/util/misc"
@@ -38,8 +38,8 @@ type SimpleTx struct {
 	Time  uint64  `json:"time"`
 }
 
-func NewAccount(value string) common.Address {
-	return common.HexToAddress(value)
+func NewAccount(value string) Address {
+	return ToAddress(value)
 }
 
 func NewSimpleTxStringAddress(from, to string, value uint, data string) SimpleTx {
@@ -229,7 +229,7 @@ func (t SignedTx) IsAuthentic() (bool, error) {
 
 	recoveredPubKeyBytes := elliptic.Marshal(crypto.S256(), recoveredPubKey.X, recoveredPubKey.Y)
 	recoveredPubKeyBytesHash := crypto.Keccak256(recoveredPubKeyBytes[1:])
-	recoveredAccount := common.BytesToAddress(recoveredPubKeyBytesHash[12:])
+	recoveredAccount := BytesToAdress(recoveredPubKeyBytesHash[12:])
 
 	return recoveredAccount.Hex() == t.From.Hex(), nil
 }

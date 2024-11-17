@@ -1,4 +1,4 @@
-package common
+package database
 
 import (
 	"bytes"
@@ -55,6 +55,10 @@ func (h *Hash) UnmarshalText(data []byte) error {
 
 func ToAddress(hex string) Address {
 	return Address(hexutil.MustDecode(hex))
+}
+
+func BytesToAdress(arr []byte) Address {
+	return ToAddress(hexutil.Encode(arr))
 }
 
 // String implements fmt.Stringer.
