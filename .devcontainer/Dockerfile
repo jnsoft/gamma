@@ -1,6 +1,5 @@
 
-# Use the official Go image as a parent image
-FROM golang:alpine
+FROM docker.io/library/golang:alpine
 
 # Install necessary tools
 RUN apk add --no-cache \
@@ -19,7 +18,8 @@ RUN go install -v golang.org/x/tools/cmd/goimports@latest
 RUN go install -v golang.org/x/tools/gopls@latest
 
 # Create a non-root user to use the container
-RUN useradd -ms /bin/bash vscode
+RUN adduser -D -s /bin/bash vscode
+#RUN apk add --no-cache shadow && useradd -ms /bin/bash vscode
 
 #RUN mkdir -p /go && chown -R vscode:vscode /go
 #RUN mkdir -p /workspace && chown -R vscode:vscode /workspace

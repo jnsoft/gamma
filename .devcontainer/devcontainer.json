@@ -9,7 +9,7 @@
         "--name=devc_gamma",
         "--privileged"
     ],
-    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,relabel=private",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind", //,relabel=private",
     "workspaceFolder": "/workspace",
     "customizations": {
         "vscode": {

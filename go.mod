@@ -1,6 +1,6 @@
 module github.com/jnsoft/gamma
 
-go 1.20
+go 1.25
 
 require (
 	github.com/caddyserver/certmagic v0.17.2
