@@ -2,6 +2,13 @@ package crypto
 
 import "strings"
 
+var BIP39Wordlist []string
+
+func init() {
+	// Split the raw wordlist into a slice. Trim trailing whitespace.
+	BIP39Wordlist = strings.Fields(bip39English)
+}
+
 // bip39English contains the BIP39 English wordlist, one word per line.
 // This avoids quoting each item and prevents syntax errors from unquoted words.
 const bip39English = `
@@ -2054,10 +2061,3 @@ zero
 zone
 zoo
 `
-
-var BIP39Wordlist []string
-
-func init() {
-	// Split the raw wordlist into a slice. Trim trailing whitespace.
-	BIP39Wordlist = strings.Fields(bip39English)
-}

@@ -14,7 +14,7 @@ func TestMnemonicRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := NewFileKeystoreFromMnemonic(mn)
+	out, err := GetEntropyFromMnemonic(mn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestMnemonicRoundTrip_RandomEntropy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := NewFileKeystoreFromMnemonic(mn)
+	out, err := GetEntropyFromMnemonic(mn)
 	if err != nil {
 		t.Fatal(err)
 	}

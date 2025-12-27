@@ -58,7 +58,7 @@ func GetMnemonic(entropy []byte) (string, error) {
 
 // NewFileKeystoreFromMnemonic decodes 24 words back to raw entropy and stores it;
 // does NOT run PBKDF2-HMAC-SHA512. It restores the same 32-byte seed you back up.
-func NewFileKeystoreFromMnemonic(mnemonic string) ([]byte, error) {
+func GetEntropyFromMnemonic(mnemonic string) ([]byte, error) {
 	if mnemonic == "" {
 		return nil, errors.New("empty mnemonic")
 	}

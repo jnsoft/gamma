@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jnsoft/gamma/src/pkg/crypto"
 	"github.com/jnsoft/gamma/src/pkg/domain/address"
 	"github.com/jnsoft/gamma/src/pkg/domain/tx"
 	"github.com/jnsoft/gamma/src/pkg/keystore"
@@ -31,6 +32,10 @@ func main() {
 		cmdExportSeed()
 	case "import":
 		cmdImportSeed()
+	case "mnemonic-export":
+		cmdMnemonicExport()
+	case "mnemonic-import":
+		cmdMnemonicImport()
 	default:
 		usage()
 	}
@@ -46,6 +51,8 @@ func usage() {
 	fmt.Println("  passwd   - change wallet password")
 	fmt.Println("  export   - export wallet seed")
 	fmt.Println("  import   - import wallet seed")
+	fmt.Println("  mnemonic-export  - export 24-word mnemonic")
+	fmt.Println("  mnemonic-import  - import 24-word mnemonic")
 }
 
 func cmdCreate() {
@@ -56,18 +63,18 @@ func cmdCreate() {
 
 	if *password == "" {
 		fmt.Println("password required")
-		return
+		os.Exit(1)
 	}
 
 	ks, err := keystore.NewFileKeystore([]byte(*password))
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	if err := ks.Save(*file); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	stateFile := statePathFor(*file)
@@ -87,28 +94,28 @@ func cmdAddress() {
 	ks, err := keystore.LoadFileKeystore(*file)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := ks.Unlock([]byte(*password)); err != nil {
 		fmt.Println("invalid password")
-		return
+		os.Exit(1)
 	}
 
 	w := wallet.New(ks)
 	stateFile := statePathFor(*file)
 	if err := w.LoadState(stateFile); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	addr, idx, err := w.NewAddressFor(uint32(*account), uint32(*change))
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := w.SaveState(stateFile); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	fmt.Printf("new address (account %d, change %d, index %d): %s\n", *account, *change, idx, addr.String())
 }
@@ -125,30 +132,30 @@ func cmdSign() {
 
 	if *to == "" {
 		fmt.Println("destination required")
-		return
+		os.Exit(1)
 	}
 
 	toAddr, err := hex.DecodeString(*to)
 	if err != nil {
 		fmt.Println("invalid address")
-		return
+		os.Exit(1)
 	}
 
 	validatedToAddress, err := address.ToAddress(toAddr)
 	if err != nil {
 		fmt.Println("invalid address")
-		return
+		os.Exit(1)
 	}
 
 	ks, err := keystore.LoadFileKeystore(*file)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	if err = ks.Unlock([]byte(*password)); err != nil {
 		fmt.Println("invalid password")
-		return
+		os.Exit(1)
 	}
 
 	w := wallet.New(ks)
@@ -163,7 +170,7 @@ func cmdSign() {
 	fromAddr, err := w.NewReceivingAddressWithPath(path)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	tx := &tx.Tx{
@@ -175,7 +182,7 @@ func cmdSign() {
 	stx, err := w.SignTx(tx, path)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Println("transaction signed")
@@ -191,19 +198,19 @@ func cmdPasswd() {
 	ks, err := keystore.LoadFileKeystore(*file)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := ks.Unlock([]byte(*old)); err != nil {
 		fmt.Println("invalid password")
-		return
+		os.Exit(1)
 	}
 	if err := ks.ChangePassword([]byte(*old), []byte(*new)); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := ks.Save(*file); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	fmt.Println("password updated")
 }
@@ -218,22 +225,22 @@ func cmdExportSeed() {
 	ks, err := keystore.LoadFileKeystore(*file)
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := ks.Unlock([]byte(*password)); err != nil {
 		fmt.Println("invalid password")
-		return
+		os.Exit(1)
 	}
 	seed, err := ks.ExportSeed()
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 
 	seedHex := hex.EncodeToString(seed)
 	if err := os.WriteFile(*out, []byte(seedHex+"\n"), 0600); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	fmt.Println("seed exported to:", *out)
 }
@@ -247,20 +254,86 @@ func cmdImportSeed() {
 	seed, err := hex.DecodeString(*seedHex)
 	if err != nil || len(seed) == 0 {
 		fmt.Println("invalid seed")
-		return
+		os.Exit(1)
 	}
 	ks, err := keystore.NewFileKeystoreFromSeed(seed, []byte(*password))
 	if err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	if err := ks.Save(*file); err != nil {
 		fmt.Println("error:", err)
-		return
+		os.Exit(1)
 	}
 	// init state file
 	_ = wallet.New(ks).SaveState(statePathFor(*file))
 	fmt.Println("seed imported:", *file)
+}
+
+func cmdMnemonicExport() {
+	fs := flag.NewFlagSet("mnemonic-export", flag.ExitOnError)
+	file := fs.String("file", "wallet.json", "keystore file")
+	password := fs.String("password", "", "wallet password")
+	out := fs.String("out", "wallet.mnemonic", "output file for mnemonic (0600)")
+	fs.Parse(os.Args[2:])
+
+	ks, err := keystore.LoadFileKeystore(*file)
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	if err := ks.Unlock([]byte(*password)); err != nil {
+		fmt.Println("invalid password")
+		os.Exit(1)
+	}
+
+	seed, err := ks.ExportSeed()
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	mn, err := crypto.GetMnemonic(seed)
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+
+	// Write mnemonic to file with restrictive perms
+	if err := os.WriteFile(*out, []byte(mn+"\n"), 0600); err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	fmt.Println("mnemonic exported to:", *out)
+}
+
+func cmdMnemonicImport() {
+	fs := flag.NewFlagSet("mnemonic-import", flag.ExitOnError)
+	file := fs.String("file", "wallet.json", "keystore file")
+	password := fs.String("password", "", "wallet password")
+	mn := fs.String("mnemonic", "", "24-word mnemonic")
+	fs.Parse(os.Args[2:])
+
+	if *mn == "" {
+		fmt.Println("mnemonic required")
+		os.Exit(1)
+	}
+
+	seed, err := crypto.GetEntropyFromMnemonic(*mn)
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	ks, err := keystore.NewFileKeystoreFromSeed(seed, []byte(*password))
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	if err := ks.Save(*file); err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+	_ = wallet.New(ks).SaveState(statePathFor(*file))
+	fmt.Println("mnemonic imported:", *file)
 }
 
 func statePathFor(keystorePath string) string {
