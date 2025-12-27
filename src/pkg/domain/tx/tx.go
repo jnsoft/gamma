@@ -19,17 +19,8 @@ type Tx struct {
 	Time     uint64          `json:"time"`
 }
 
-type SignedTx struct {
-	Tx
-	Sig []byte `json:"signature"`
-}
-
 func NewTx(from, to address.Address, gas uint, gasPrice uint, value, nonce uint, data string) Tx {
 	return Tx{from, to, gas, gasPrice, value, nonce, data, uint64(time.Now().Unix())}
-}
-
-func NewSignedTx(tx Tx, sig []byte) SignedTx {
-	return SignedTx{tx, sig}
 }
 
 func (t Tx) IsMint() bool {
@@ -58,14 +49,6 @@ func (t Tx) Encode() ([]byte, error) {
 }
 
 func (t Tx) MarshalJSON() ([]byte, error) {
-	return json.Marshal(Tx{
-		From:     t.From,
-		To:       t.To,
-		Gas:      t.Gas,
-		GasPrice: t.GasPrice,
-		Value:    t.Value,
-		Nonce:    t.Nonce,
-		Data:     t.Data,
-		Time:     t.Time,
-	})
+	type txAlias Tx
+	return json.Marshal(txAlias(t))
 }

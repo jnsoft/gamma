@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
-	"github.com/jnsoft/gamma/src/common"
+	"github.com/jnsoft/gamma/src/pkg/crypto"
+	"github.com/jnsoft/gamma/src/pkg/domain/address"
 )
 
 type keyStore interface {
 	// Loads and decrypts the key from disk.
-	GetKey(addr common.Address, filename string, auth string) (*Key, error)
+	GetKey(addr address.Address, filename string, auth string) (*Key, error)
 	// Writes and encrypts the key.
 	StoreKey(filename string, k *Key, auth string) error
 	// Joins filename with the key directory unless it is already absolute.
@@ -25,12 +25,12 @@ type keyStore interface {
 
 type Key struct {
 	Id         uuid.UUID         // Version 4 "random" for unique id not derived from key data
-	Address    common.Address    // Address derived from the public key
+	Address    address.Address   // Address derived from the public key
 	PrivateKey *ecdsa.PrivateKey // Private key in plaintext
 }
 
 func newKey(rand io.Reader) (*Key, error) {
-	privateKeyECDSA, err := ecdsa.GenerateKey(crypto.S256(), rand)
+	privateKeyECDSA, err := crypto.GeneratePrivateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *Key {
 	}
 	key := &Key{
 		Id:         id,
-		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
+		Address:    address.PublicKeyToAddress(crypto.FromECDSAPub(&privateKeyECDSA.PublicKey)),
 		PrivateKey: privateKeyECDSA,
 	}
 	return key
@@ -82,7 +82,7 @@ func writeTemporaryKeyFile(file string, content []byte) (string, error) {
 
 // keyFileName implements the naming convention for keyfiles:
 // UTC--<created_at UTC ISO8601>-<address hex>
-func keyFileName(keyAddr common.Address) string {
+func keyFileName(keyAddr address.Address) string {
 	ts := time.Now().UTC()
 	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
 }

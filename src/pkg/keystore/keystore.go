@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 
 	"github.com/google/uuid"
-	"github.com/jnsoft/gamma/src/common"
+	"github.com/jnsoft/gamma/src/pkg/crypto"
 	"github.com/jnsoft/gamma/src/pkg/domain/address"
 )
 
@@ -25,7 +25,7 @@ func (ks *KeyStore) NewKey() (*Key, error) {
 
 	key := &Key{
 		Id:         uuid.New(),
-		Address:    common.Address{},
+		Address:    address.PublicKeyToAddress(crypto.FromECDSAPub(&privKey.PublicKey)),
 		PrivateKey: privKey,
 	}
 
