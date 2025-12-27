@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var cliDir = filepath.Join("/workspace", "src", "pkg", "cmd", "walletcli")
+var cliDir = filepath.Join("/workspace", "src", "cmd", "walletcli")
 var addrLine = regexp.MustCompile(`new address \(account (\d+), change (\d+), index (\d+)\): ([0-9a-fA-F]+)`)
 
 func TestCreateAndAddress(t *testing.T) {

@@ -2,9 +2,11 @@
 
 ## Test
 ```
+go test ./src/pkg/crypto
 go test ./src/pkg/keystore
 go test ./src/pkg/wallet
-go test ./src/pkg/cmd/walletcli -v
+
+go test ./src/cmd/walletcli
 
 ```
 
