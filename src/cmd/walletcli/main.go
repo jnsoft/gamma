@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/jnsoft/gamma/src/pkg/crypto"
 	"github.com/jnsoft/gamma/src/pkg/domain/address"
@@ -63,6 +65,11 @@ func cmdCreate() {
 
 	if *password == "" {
 		fmt.Println("password required")
+		os.Exit(1)
+	}
+
+	if _, err := os.Stat(*file); err == nil {
+		fmt.Println("error: file already exists:", *file)
 		os.Exit(1)
 	}
 
@@ -337,5 +344,9 @@ func cmdMnemonicImport() {
 }
 
 func statePathFor(keystorePath string) string {
-	return keystorePath + ".state.json"
+	dir := filepath.Dir(keystorePath)
+	base := filepath.Base(keystorePath)
+	ext := filepath.Ext(base) // ".json"
+	name := strings.TrimSuffix(base, ext)
+	return filepath.Join(dir, name+".state.json")
 }

@@ -13,6 +13,9 @@ go test ./src/cmd/walletcli
 ## Wallet CLI
 
 ```
+go run ./src/cmd/walletcli create -file wallet.json -password secret
+go run ./src/cmd/walletcli address -file wallet.json -password secret
+
 walletcli create -file mywallet.json -password secret
 walletcli address -file mywallet.json -password secret
 walletcli sign \
@@ -21,5 +24,10 @@ walletcli sign \
   -to deadbeef... \
   -amount 100
 
+```
+
+## Node
+```
+go run ./src/node -v -ip 127.0.0.1 -p 8081
 ```
 
