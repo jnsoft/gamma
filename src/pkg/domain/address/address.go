@@ -25,6 +25,10 @@ func (a Address) String() string {
 	return hex.EncodeToString(a[:])
 }
 
+func (a Address) Hex() string {
+	return hex.EncodeToString(a[:])
+}
+
 func ToAddress(b []byte) (Address, error) {
 	if len(b) != AddressLength {
 		return Address{}, fmt.Errorf("invalid address length")
