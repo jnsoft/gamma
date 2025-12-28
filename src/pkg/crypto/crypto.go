@@ -108,6 +108,15 @@ func Verify(msg, sig, pub []byte) error {
 		return errors.New("signature verify failed")
 	}
 
+	/* DONT WANT TO USE ADDRESS HERE...
+	// derive address and compare
+	    pubXY := append(x.Bytes(), y.Bytes()...)
+	    got := address.PublicKeyToAddress(pubXY)
+	    if got != want {
+	        return errors.New("pubkey does not match address")
+	    }
+	    return nil
+	*/
 	return nil
 }
 
@@ -121,13 +130,3 @@ func serializePath(path []uint32) []byte {
 	}
 	return ser
 }
-
-/* DONT WANT TO USE ADDRESS HERE...
-// derive address and compare
-    pubXY := append(x.Bytes(), y.Bytes()...)
-    got := address.PublicKeyToAddress(pubXY)
-    if got != want {
-        return errors.New("pubkey does not match address")
-    }
-    return nil
-*/

@@ -15,7 +15,8 @@ func NewSignedTx(tx tx.Tx, sig []byte) SignedTx {
 	return SignedTx{tx, sig}
 }
 
-// TODO - Test and fix
+// TODO - Test and fix, needs to recover pubkey from sig (ecp256k1 with a recovery id (v)?)
+// other pattern can be include pubkey, verify signature, verify pubkey→address,”
 func (t SignedTx) IsAuthentic() (bool, error) {
 	txHash, err := t.Tx.Hash()
 	if err != nil {

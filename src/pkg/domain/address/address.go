@@ -17,7 +17,7 @@ const (
 type Address [AddressLength]byte
 
 func PublicKeyToAddress(pub []byte) Address {
-	hash := crypto.Sha3_256(pub)
+	hash := crypto.Sha3_256(pub[1:])
 	return Address(hash[HashLength-AddressLength:])
 }
 
