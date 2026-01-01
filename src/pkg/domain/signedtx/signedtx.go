@@ -17,15 +17,15 @@ func NewSignedTx(tx tx.Tx, sig []byte) SignedTx {
 
 // TODO - Test and fix, needs to recover pubkey from sig (ecp256k1 with a recovery id (v)?)
 // other pattern can be include pubkey, verify signature, verify pubkey→address,”
-func (t SignedTx) IsAuthentic() (bool, error) {
+func (t SignedTx) IsAuthentic() bool {
 	txHash, err := t.Tx.Hash()
 	if err != nil {
-		return false, err
+		return false
 	}
 
 	recoveredPubKey, err := crypto.SigToPub(txHash[:], t.Sig)
 	if err != nil {
-		return false, err
+		return false
 	}
 
 	recoveredPubKeyBytes := crypto.FromECDSAPub(recoveredPubKey)
@@ -33,6 +33,6 @@ func (t SignedTx) IsAuthentic() (bool, error) {
 	recoveredPubKeyBytesHash := crypto.Sha3_256(recoveredPubKeyBytes[1:])
 	recoveredAccount := address.PublicKeyToAddress(recoveredPubKeyBytesHash[12:])
 
-	return recoveredAccount.Hex() == t.From.Hex(), nil
+	return recoveredAccount.Hex() == t.From.Hex()
 
 }

@@ -320,39 +320,6 @@ func applyBlock(b Block, s *State) error {
 	return nil
 }
 
-func applySimpleBlock(b SimpleBlock, s *State) error {
-	nextExpectedBlockNumber := s.NextBlockNumber()
-
-	if s.hasGenesisBlock && b.Header.Number != nextExpectedBlockNumber {
-		return fmt.Errorf("next expected block must be '%d' not '%d'", nextExpectedBlockNumber, b.Header.Number)
-	}
-
-	if s.hasGenesisBlock && s.latestBlock.Header.Number > 0 && !reflect.DeepEqual(b.Header.Parent, s.latestBlockHash) {
-		return fmt.Errorf("next block parent hash must be '%x' not '%x'", s.latestBlockHash, b.Header.Parent)
-	}
-
-	hash, err := b.Hash()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Hash: %x", hash)
-
-	err = applySimpleTXs(b.TXs, s)
-	if err != nil {
-		return err
-	}
-
-	s.Balances[b.Header.Miner] += BlockReward
-	if s.IsTIP1Fork() {
-		s.Balances[b.Header.Miner] += b.GasReward()
-	} else {
-		s.Balances[b.Header.Miner] += uint(len(b.TXs)) * TxFee
-	}
-
-	return nil
-}
-
 func applyTXs(txs []SignedTx, s *State) error {
 	sort.Slice(txs, func(i, j int) bool {
 		return txs[i].Time < txs[j].Time
@@ -368,37 +335,8 @@ func applyTXs(txs []SignedTx, s *State) error {
 	return nil
 }
 
-func applySimpleTXs(txs []SimpleTx, s *State) error {
-	sort.Slice(txs, func(i, j int) bool {
-		return txs[i].Time < txs[j].Time
-	})
-
-	for _, tx := range txs {
-		err := ApplySimpleTx(tx, s)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func ApplyTx(tx SignedTx, s *State) error {
 	err := ValidateTx(tx, s)
-	if err != nil {
-		return err
-	}
-
-	s.Balances[tx.From] -= tx.Cost(s.IsTIP1Fork())
-	s.Balances[tx.To] += tx.Value
-
-	s.Account2Nonce[tx.From] = tx.Nonce
-
-	return nil
-}
-
-func ApplySimpleTx(tx SimpleTx, s *State) error {
-	err := ValidateSimpleTx(tx, s)
 	if err != nil {
 		return err
 	}
@@ -443,28 +381,6 @@ func ValidateTx(tx SignedTx, s *State) error {
 		if tx.Gas != 0 || tx.GasPrice != 0 {
 			return fmt.Errorf("invalid TX. `Gas` and `GasPrice` can't be populated before TIP1 fork is active")
 		}
-	}
-
-	if tx.Cost(s.IsTIP1Fork()) > s.Balances[tx.From] {
-		return fmt.Errorf("wrong TX. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From.String(), s.Balances[tx.From], tx.Cost(s.IsTIP1Fork()))
-	}
-
-	return nil
-}
-
-func ValidateSimpleTx(tx SimpleTx, s *State) error {
-	ok, err := tx.IsAuthentic()
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return fmt.Errorf("wrong TX. Sender '%s' is forged", tx.From.String())
-	}
-
-	expectedNonce := s.GetNextAccountNonce(tx.From)
-	if tx.Nonce != expectedNonce {
-		return fmt.Errorf("wrong TX. Sender '%s' next nonce must be '%d', not '%d'", tx.From.String(), expectedNonce, tx.Nonce)
 	}
 
 	if tx.Cost(s.IsTIP1Fork()) > s.Balances[tx.From] {
