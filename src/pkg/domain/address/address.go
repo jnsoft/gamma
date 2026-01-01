@@ -21,6 +21,14 @@ func PublicKeyToAddress(pub []byte) Address {
 	return Address(hash[HashLength-AddressLength:])
 }
 
+func HexToAddress(s string) (Address, error) {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return Address{}, err
+	}
+	return ToAddress(b)
+}
+
 func (a Address) String() string {
 	return hex.EncodeToString(a[:])
 }

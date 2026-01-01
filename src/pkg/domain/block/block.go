@@ -44,13 +44,16 @@ func NewBlock(parentHash, stateRoot [32]byte, blockNumber uint64, extraData []by
 	}, nil
 }
 
-func (b Block) Hash() ([]byte, error) {
+func (b Block) Hash() ([32]byte, error) {
 	bJson, err := b.Encode()
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return crypto.Sha3_256(bJson), nil
+	var out [32]byte
+	hash := crypto.Sha3_256(bJson)
+	copy(out[:], hash)
+	return out, nil
 }
 
 func (b Block) Encode() ([]byte, error) {
