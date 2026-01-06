@@ -16,7 +16,7 @@ import (
 type State struct {
 	Balances           map[address.Address]uint
 	Account2Nonce      map[address.Address]uint
-	CurrentBlockHash   [32]byte
+	CurrentBlockHash   crypto.Hash
 	CurrentBlockNumber uint64
 	TransactionPool    []signedtx.SignedTx
 }
@@ -42,7 +42,7 @@ func NewStateFromJson(data string) (*State, error) {
 func NewStateWithData(
 	balances map[address.Address]uint,
 	nonces map[address.Address]uint,
-	currentBlockHash [32]byte,
+	currentBlockHash crypto.Hash,
 	currentBlockNumber uint64,
 ) *State {
 	bals := make(map[address.Address]uint, len(balances))
@@ -158,7 +158,7 @@ func (s *State) ComputeStateRoot() [32]byte {
 }
 
 // add Account2Nonce?
-func computeStateRoot(balances map[address.Address]uint) [32]byte {
+func computeStateRoot(balances map[address.Address]uint) crypto.Hash {
 	// For deterministic hashing, sort addresses first
 	addrs := make([]address.Address, 0, len(balances))
 	for addr := range balances {
@@ -180,9 +180,5 @@ func computeStateRoot(balances map[address.Address]uint) [32]byte {
 		data = append(data, buf...)
 	}
 
-	hash := crypto.Sha3_256(data)
-
-	var out [32]byte
-	copy(out[:], hash)
-	return out
+	return crypto.Sha3_256(data)
 }

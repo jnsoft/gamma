@@ -104,7 +104,7 @@ func (w *Wallet) SignTx(tx *tx.Tx, path []uint32) (signedtx.SignedTx, error) {
 	if err != nil {
 		return signedtx.SignedTx{}, err
 	}
-	sig, err := w.ks.Sign(path, txhash)
+	sig, err := w.ks.Sign(path, txhash[:])
 	if err != nil {
 		return signedtx.SignedTx{}, err
 	}

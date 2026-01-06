@@ -35,10 +35,10 @@ func (t Tx) GasCost() uint {
 	return t.Gas * t.GasPrice
 }
 
-func (t Tx) Hash() ([]byte, error) {
+func (t Tx) Hash() (crypto.Hash, error) {
 	txJson, err := t.Encode()
 	if err != nil {
-		return nil, err
+		return crypto.Hash{}, err
 	}
 
 	return crypto.Sha3_256(txJson), nil
