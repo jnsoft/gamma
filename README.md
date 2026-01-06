@@ -8,6 +8,9 @@ go test ./src/pkg/wallet
 
 go test ./src/cmd/walletcli
 
+go test ./src/pkg/database
+go test ./src/pkg/database -run TestInitDataDirectory_CreatesGenesisAndDb
+
 ```
 
 ## Wallet CLI

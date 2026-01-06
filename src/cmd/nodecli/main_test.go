@@ -12,6 +12,8 @@ func TestInit(t *testing.T) {
 	tmp := t.TempDir()
 	dataDir := filepath.Join(tmp, "data")
 
+	dataDir = ""
+
 	// init
 	{
 		cmd := exec.Command("go", "run", ".", "init", "-d", dataDir)

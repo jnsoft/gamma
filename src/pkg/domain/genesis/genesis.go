@@ -6,13 +6,13 @@ import (
 )
 
 type Genesis struct {
-	Time     uint64                   `json:"time"`
-	ChainID  string                   `json:"chain_id"`
-	Symbol   string                   `json:"symbol"`
-	Balances map[address.Address]uint `json:"balances"`
+	Time     uint64          `json:"time"`
+	ChainID  string          `json:"chain_id"`
+	Symbol   string          `json:"symbol"`
+	Balances map[string]uint `json:"balances"`
 }
 
-func NewGenesis(chainID, symbol string, balances map[address.Address]uint) *Genesis {
+func NewGenesis(chainID, symbol string, balances map[string]uint) *Genesis {
 	return &Genesis{
 		Time:     uint64(common.NowUnixUTC()),
 		ChainID:  chainID,

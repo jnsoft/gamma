@@ -21,8 +21,8 @@ const (
 	GENESIS_FILE  = "genesis.json"
 )
 
-func VerifyBlockChain([]block.Block) error {
-	jsonBlocks, err := ReadBlocksAsJson()
+func VerifyBlockChain(dataDir string, blocks []block.Block) error {
+	jsonBlocks, err := ReadBlocksAsJson(dataDir)
 	if err != nil {
 		return fmt.Errorf("cannot read blocks from database: %w", err)
 	}
@@ -80,16 +80,20 @@ func InitDataDirectory(dataDir string) error {
 		}
 
 		var g genesis.Genesis
-		if err := json.Unmarshal([]byte(genesisData), &g); err != nil {
+		if err := json.Unmarshal(genesisData, &g); err != nil {
 			return fmt.Errorf("cannot unmarshal genesis: %w", err)
 		}
 
-		state := state.NewState()
+		st := state.NewState()
 
-		for addr, bal := range g.Balances {
-			state.Balances[addr] = bal
+		// g.Balances is map[string]uint, convert keys to address.Address
+		for s, bal := range g.Balances {
+			var addr address.Address
+			copy(addr[:], []byte(s))
+			st.Balances[addr] = bal
 		}
-		sroot := state.ComputeStateRoot()
+
+		sroot := st.ComputeStateRoot()
 		var zeroHash [32]byte
 
 		genesisBlock, err := block.NewBlock(zeroHash, sroot, 0, nil, nil)
@@ -101,14 +105,14 @@ func InitDataDirectory(dataDir string) error {
 			return fmt.Errorf("cannot encode genesis block: %w", err)
 		}
 
-		if err := os.WriteFile(dataDir+DB_FILE, encodedBlock, 0644); err != nil {
+		if err := os.WriteFile(dataDir+DB_FILE, append(encodedBlock, '\n'), 0644); err != nil {
 			return fmt.Errorf("cannot write database file: %w", err)
 		}
 
-		if err := SaveAddressMap(dataDir+BALANCES_FILE, state.Balances); err != nil {
+		if err := SaveAddressMap(dataDir+BALANCES_FILE, st.Balances); err != nil {
 			return fmt.Errorf("cannot save initial balances: %w", err)
 		}
-		if err := SaveAddressMap(dataDir+NOUNCES_FILE, state.Account2Nonce); err != nil {
+		if err := SaveAddressMap(dataDir+NOUNCES_FILE, st.Account2Nonce); err != nil {
 			return fmt.Errorf("cannot save initial nonces: %w", err)
 		}
 	}
@@ -186,7 +190,7 @@ func PersistState(dataDir string, s *state.State) error {
 		return fmt.Errorf("cannot encode block: %w", err)
 	}
 
-	if err := AppendBlock(string(blkBytes)); err != nil {
+	if err := AppendBlock(dataDir, string(blkBytes)); err != nil {
 		return err
 	}
 
@@ -200,10 +204,10 @@ func PersistState(dataDir string, s *state.State) error {
 	return nil
 }
 
-func AppendBlock(json string) error {
+func AppendBlock(dataDir, json string) error {
 	encoded := []byte(json)
 
-	f, err := os.OpenFile(DB_FILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(dataDir+DB_FILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("cannot open block DB file: %w", err)
 	}
@@ -219,17 +223,17 @@ func AppendBlock(json string) error {
 	return nil
 }
 
-func ReadBlocksAsJson() ([]string, error) {
+func ReadBlocksAsJson(dataDir string) ([]string, error) {
 	var blocks []string
 
-	data, err := os.ReadFile(DB_FILE)
+	data, err := os.ReadFile(dataDir + DB_FILE)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read block DB file: %w", err)
 	}
 
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
-		if line == "" {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 		blocks = append(blocks, line)
@@ -239,11 +243,17 @@ func ReadBlocksAsJson() ([]string, error) {
 }
 
 func SaveAddressMap(path string, balances map[address.Address]uint) error {
-	data, err := json.Marshal(balances)
+	// convert keys to string for JSON
+	stringMap := make(map[string]uint, len(balances))
+	for addr, bal := range balances {
+		stringMap[string(addr[:])] = bal
+	}
+
+	data, err := json.Marshal(stringMap)
 	if err != nil {
 		return fmt.Errorf("cannot marshal balances to JSON: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("cannot write balances to file: %w", err)
 	}
 	return nil
@@ -259,9 +269,18 @@ func GetAddressMap(path string) (map[address.Address]uint, error) {
 		return nil, fmt.Errorf("cannot read database file: %w", err)
 	}
 
-	var balances map[address.Address]uint
-	if err := json.Unmarshal(data, &balances); err != nil {
+	// read string-keyed map from JSON
+	var stringMap map[string]uint
+	if err := json.Unmarshal(data, &stringMap); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal database file: %w", err)
+	}
+
+	// convert back to address.Address keys
+	balances := make(map[address.Address]uint, len(stringMap))
+	for s, bal := range stringMap {
+		var addr address.Address
+		copy(addr[:], []byte(s))
+		balances[addr] = bal
 	}
 
 	return balances, nil
