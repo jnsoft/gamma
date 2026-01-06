@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jnsoft/gamma/src/pkg/crypto"
 	"github.com/jnsoft/gamma/src/pkg/domain/address"
@@ -30,6 +31,14 @@ func NewState() *State {
 	}
 }
 
+func NewStateFromJson(data string) (*State, error) {
+	state := &State{}
+	if err := json.Unmarshal([]byte(data), state); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal JSON to state: %w", err)
+	}
+	return state, nil
+}
+
 func NewStateWithData(
 	balances map[address.Address]uint,
 	nonces map[address.Address]uint,
@@ -52,14 +61,6 @@ func NewStateWithData(
 		CurrentBlockNumber: currentBlockNumber,
 		TransactionPool:    []signedtx.SignedTx{},
 	}
-}
-
-func NewStateFromJson(data string) (*State, error) {
-	state := &State{}
-	if err := json.Unmarshal([]byte(data), state); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal JSON to state: %w", err)
-	}
-	return state, nil
 }
 
 func (s *State) ToJson() (string, error) {
@@ -95,6 +96,20 @@ func (s *State) Persist() (block.Block, error) {
 	s.CurrentBlockNumber = b.Header.Number
 
 	return b, nil
+}
+
+func (s *State) String() string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Current Block: %d\n", s.CurrentBlockNumber))
+	b.WriteString("Balances:\n")
+	for addr, bal := range s.Balances {
+		b.WriteString(fmt.Sprintf("  %s: %d\n", addr, bal))
+	}
+	b.WriteString("Nonces:\n")
+	for addr, nonce := range s.Account2Nonce {
+		b.WriteString(fmt.Sprintf("  %s: %d\n", addr, nonce))
+	}
+	return b.String()
 }
 
 // TODO sort transactions before applying

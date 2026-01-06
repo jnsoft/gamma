@@ -99,7 +99,7 @@ func TestPersistState_AppendsBlockAndUpdatesSnapshots(t *testing.T) {
 		t.Fatalf("cannot read db file: %v", err)
 	}
 
-	blocks, err := ReadBlocksAsJson(dataDir)
+	blocks, err := ReadBlocksAsJson(db_path(dataDir))
 	if err != nil {
 		t.Fatalf("ReadBlocksAsJson failed: %v", err)
 	}

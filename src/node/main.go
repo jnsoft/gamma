@@ -43,6 +43,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(state.DbFile)
+	fmt.Println(state.String())
 
 }

@@ -21,8 +21,21 @@ const (
 	GENESIS_FILE  = "genesis.json"
 )
 
+func db_path(dataDir string) string {
+	return dataDir + "/" + DB_FILE
+}
+func balances_path(dataDir string) string {
+	return dataDir + "/" + BALANCES_FILE
+}
+func nonces_path(dataDir string) string {
+	return dataDir + "/" + NOUNCES_FILE
+}
+func genesis_path(dataDir string) string {
+	return dataDir + "/" + GENESIS_FILE
+}
+
 func VerifyBlockChain(dataDir string, blocks []block.Block) error {
-	jsonBlocks, err := ReadBlocksAsJson(dataDir)
+	jsonBlocks, err := ReadBlocksAsJson(db_path(dataDir))
 	if err != nil {
 		return fmt.Errorf("cannot read blocks from database: %w", err)
 	}
@@ -43,11 +56,11 @@ func VerifyBlockChain(dataDir string, blocks []block.Block) error {
 }
 
 func GetStateFromDisk(dataDir string) (*state.State, error) {
-	if !common.FileExists(dataDir + DB_FILE) {
+	if !common.FileExists(db_path(dataDir)) {
 		return nil, fmt.Errorf("database file not found")
 	}
 
-	statefile, err := os.ReadFile(dataDir + DB_FILE)
+	statefile, err := os.ReadFile(db_path(dataDir))
 	if err != nil {
 		return nil, fmt.Errorf("cannot read database file: %w", err)
 	}
@@ -65,16 +78,16 @@ func InitDataDirectory(dataDir string) error {
 		return err
 	}
 
-	if !common.FileExists(dataDir + GENESIS_FILE) {
+	if !common.FileExists(genesis_path(dataDir)) {
 		// create genesis file
-		if err := os.WriteFile(dataDir+GENESIS_FILE, []byte(genesis.GenesisJson), 0644); err != nil {
+		if err := os.WriteFile(genesis_path(dataDir), []byte(genesis.GenesisJson), 0644); err != nil {
 			return fmt.Errorf("cannot create genesis file: %w", err)
 		}
 	}
 
-	if !common.FileExists(dataDir + DB_FILE) {
+	if !common.FileExists(db_path(dataDir)) {
 		// create first block from genesis file and write first block to db
-		genesisData, err := os.ReadFile(dataDir + GENESIS_FILE)
+		genesisData, err := os.ReadFile(genesis_path(dataDir))
 		if err != nil {
 			return fmt.Errorf("cannot read genesis file: %w", err)
 		}
@@ -105,14 +118,14 @@ func InitDataDirectory(dataDir string) error {
 			return fmt.Errorf("cannot encode genesis block: %w", err)
 		}
 
-		if err := os.WriteFile(dataDir+DB_FILE, append(encodedBlock, '\n'), 0644); err != nil {
+		if err := os.WriteFile(db_path(dataDir), append(encodedBlock, '\n'), 0644); err != nil {
 			return fmt.Errorf("cannot write database file: %w", err)
 		}
 
-		if err := SaveAddressMap(dataDir+BALANCES_FILE, st.Balances); err != nil {
+		if err := SaveAddressMap(balances_path(dataDir), st.Balances); err != nil {
 			return fmt.Errorf("cannot save initial balances: %w", err)
 		}
-		if err := SaveAddressMap(dataDir+NOUNCES_FILE, st.Account2Nonce); err != nil {
+		if err := SaveAddressMap(nonces_path(dataDir), st.Account2Nonce); err != nil {
 			return fmt.Errorf("cannot save initial nonces: %w", err)
 		}
 	}
@@ -121,23 +134,23 @@ func InitDataDirectory(dataDir string) error {
 }
 
 func LoadState(dataDir string) (*state.State, error) {
-	if !common.FileExists(dataDir + DB_FILE) {
+	if !common.FileExists(db_path(dataDir)) {
 		return nil, fmt.Errorf("database file not found")
 	}
 
 	// Try snapshot files first
-	balances, err := GetAddressMap(dataDir + BALANCES_FILE)
+	balances, err := GetAddressMap(balances_path(dataDir))
 	if err != nil {
 		// if snapshot missing/corrupt, fall back to empty and rely on replay if you want
 		balances = make(map[address.Address]uint)
 	}
-	nonces, err := GetAddressMap(dataDir + NOUNCES_FILE)
+	nonces, err := GetAddressMap(nonces_path(dataDir))
 	if err != nil {
 		nonces = make(map[address.Address]uint)
 	}
 
 	// Determine tip hash & number from the block DB
-	f, err := os.Open(dataDir + DB_FILE)
+	f, err := os.Open(db_path(dataDir))
 	if err != nil {
 		return nil, fmt.Errorf("cannot open block DB file: %w", err)
 	}
@@ -190,24 +203,24 @@ func PersistState(dataDir string, s *state.State) error {
 		return fmt.Errorf("cannot encode block: %w", err)
 	}
 
-	if err := AppendBlock(dataDir, string(blkBytes)); err != nil {
+	if err := AppendBlock(db_path(dataDir), string(blkBytes)); err != nil {
 		return err
 	}
 
-	if err := SaveAddressMap(dataDir+BALANCES_FILE, s.Balances); err != nil {
+	if err := SaveAddressMap(balances_path(dataDir), s.Balances); err != nil {
 		return fmt.Errorf("cannot save balances: %w", err)
 	}
-	if err := SaveAddressMap(dataDir+NOUNCES_FILE, s.Account2Nonce); err != nil {
+	if err := SaveAddressMap(nonces_path(dataDir), s.Account2Nonce); err != nil {
 		return fmt.Errorf("cannot save nonces: %w", err)
 	}
 
 	return nil
 }
 
-func AppendBlock(dataDir, json string) error {
+func AppendBlock(path, json string) error {
 	encoded := []byte(json)
 
-	f, err := os.OpenFile(dataDir+DB_FILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("cannot open block DB file: %w", err)
 	}
@@ -223,10 +236,10 @@ func AppendBlock(dataDir, json string) error {
 	return nil
 }
 
-func ReadBlocksAsJson(dataDir string) ([]string, error) {
+func ReadBlocksAsJson(path string) ([]string, error) {
 	var blocks []string
 
-	data, err := os.ReadFile(dataDir + DB_FILE)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read block DB file: %w", err)
 	}

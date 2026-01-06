@@ -38,9 +38,6 @@ go run ./src/node -v -ip 127.0.0.1 -p 8081
 Application code (e.g. `main` or your node package) should orchestrate:
 
 ```go
-if err := database.InitDataDirectory(dataDir); err != nil {
-    // handle
-}
 
 st, err := database.LoadState(dataDir)
 if err != nil {

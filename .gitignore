@@ -16,3 +16,4 @@
 
 wallet.json
 wallet.state.json
+.data/*
