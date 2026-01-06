@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/jnsoft/gamma/src/pkg/crypto"
-	"github.com/jnsoft/gamma/src/pkg/database"
 	"github.com/jnsoft/gamma/src/pkg/domain/address"
 	"github.com/jnsoft/gamma/src/pkg/domain/block"
 	"github.com/jnsoft/gamma/src/pkg/domain/signedtx"
@@ -21,19 +20,37 @@ type State struct {
 	TransactionPool    []signedtx.SignedTx
 }
 
-func NewState(dbFile string) *State {
-	balances, err := database.GetBalances()
-	if err != nil {
-		balances = make(map[address.Address]uint)
-	}
-	nonces, err := database.GetNonces()
-	if err != nil {
-		nonces = make(map[address.Address]uint)
-	}
+func NewState() *State {
 	return &State{
-		Balances:        balances,
-		Account2Nonce:   nonces,
-		TransactionPool: []signedtx.SignedTx{},
+		Balances:           make(map[address.Address]uint),
+		Account2Nonce:      make(map[address.Address]uint),
+		CurrentBlockHash:   [32]byte{},
+		CurrentBlockNumber: 0,
+		TransactionPool:    []signedtx.SignedTx{},
+	}
+}
+
+func NewStateWithData(
+	balances map[address.Address]uint,
+	nonces map[address.Address]uint,
+	currentBlockHash [32]byte,
+	currentBlockNumber uint64,
+) *State {
+	bals := make(map[address.Address]uint, len(balances))
+	for k, v := range balances {
+		bals[k] = v
+	}
+	ncs := make(map[address.Address]uint, len(nonces))
+	for k, v := range nonces {
+		ncs[k] = v
+	}
+
+	return &State{
+		Balances:           bals,
+		Account2Nonce:      ncs,
+		CurrentBlockHash:   currentBlockHash,
+		CurrentBlockNumber: currentBlockNumber,
+		TransactionPool:    []signedtx.SignedTx{},
 	}
 }
 
@@ -43,15 +60,6 @@ func NewStateFromJson(data string) (*State, error) {
 		return nil, fmt.Errorf("cannot unmarshal JSON to state: %w", err)
 	}
 	return state, nil
-}
-
-func verifyBlockChain([]block.Block) error {
-	jsonBlocks, err := database.ReadBlocksAsJson()
-	if err != nil {
-		return fmt.Errorf("cannot read blocks from database: %w", err)
-	}
-
-	return nil
 }
 
 func (s *State) ToJson() (string, error) {
@@ -71,40 +79,25 @@ func (s *State) AddTransaction(tx signedtx.SignedTx) error {
 	return nil
 }
 
-func (s *State) Persist() error {
+func (s *State) Persist() (block.Block, error) {
 	// 1. Produce a new block from the current transaction pool and balances
 	b, err := s.produceBlock()
 	if err != nil {
-		return fmt.Errorf("cannot produce block: %w", err)
+		return block.Block{}, fmt.Errorf("cannot produce block: %w", err)
 	}
+
+	// Update in‑memory chain tip
 	bhash, err := b.Hash()
 	if err != nil {
-		return fmt.Errorf("cannot hash block: %w", err)
+		return block.Block{}, fmt.Errorf("cannot hash block: %w", err)
 	}
 	s.CurrentBlockHash = bhash
-	s.CurrentBlockNumber++
+	s.CurrentBlockNumber = b.Header.Number
 
-	// 2. Encode block to JSON and append to block DB file
-	blockBytes, err := b.Encode()
-	if err != nil {
-		return fmt.Errorf("cannot encode block: %w", err)
-	}
-	if err := database.AppendBlock(string(blockBytes)); err != nil {
-		return fmt.Errorf("cannot append block to file: %w", err)
-	}
-
-	// 4. Save current Balances
-	if err := database.SaveAddressMap(database.BALANCES_FILE, s.Balances); err != nil {
-		return fmt.Errorf("cannot save balances: %w", err)
-	}
-
-	if err := database.SaveAddressMap(database.NOUNCES_FILE, s.Account2Nonce); err != nil {
-		return fmt.Errorf("cannot save nonces: %w", err)
-	}
-
-	return nil
+	return b, nil
 }
 
+// TODO sort transactions before applying
 func (s *State) produceBlock() (block.Block, error) {
 	var included []signedtx.SignedTx
 
@@ -114,7 +107,7 @@ func (s *State) produceBlock() (block.Block, error) {
 		}
 	}
 
-	newBlock, err := block.NewBlock(s.CurrentBlockHash, s.computeStateRoot(), s.CurrentBlockNumber+1, nil, included)
+	newBlock, err := block.NewBlock(s.CurrentBlockHash, computeStateRoot(s.Balances), s.CurrentBlockNumber+1, nil, included)
 	if err != nil {
 		return block.Block{}, err
 	}
@@ -126,24 +119,34 @@ func (s *State) produceBlock() (block.Block, error) {
 }
 
 func (s *State) applyTransaction(tx signedtx.SignedTx) bool {
-	if s.Balances[tx.From] < tx.Value {
+	if !tx.IsAuthentic() {
 		return false
 	}
 
-	if !tx.IsAuthentic() {
+	expected := s.Account2Nonce[tx.From] + 1
+	if tx.Nonce != expected {
+		return false
+	}
+
+	if s.Balances[tx.From] < tx.Value {
 		return false
 	}
 
 	s.Balances[tx.From] -= tx.Value
 	s.Balances[tx.To] += tx.Value
+	s.Account2Nonce[tx.From]++
 	return true
 }
 
+func (s *State) ComputeStateRoot() [32]byte {
+	return computeStateRoot(s.Balances)
+}
+
 // add Account2Nonce?
-func (s *State) computeStateRoot() [32]byte {
+func computeStateRoot(balances map[address.Address]uint) [32]byte {
 	// For deterministic hashing, sort addresses first
-	addrs := make([]address.Address, 0, len(s.Balances))
-	for addr := range s.Balances {
+	addrs := make([]address.Address, 0, len(balances))
+	for addr := range balances {
 		addrs = append(addrs, addr)
 	}
 
@@ -153,7 +156,7 @@ func (s *State) computeStateRoot() [32]byte {
 
 	var data []byte
 	for _, addr := range addrs {
-		bal := s.Balances[addr]
+		bal := balances[addr]
 
 		data = append(data, addr[:]...)
 

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,6 +20,27 @@ const (
 	NOUNCES_FILE  = "nonces.json"
 	GENESIS_FILE  = "genesis.json"
 )
+
+func VerifyBlockChain([]block.Block) error {
+	jsonBlocks, err := ReadBlocksAsJson()
+	if err != nil {
+		return fmt.Errorf("cannot read blocks from database: %w", err)
+	}
+
+	if len(jsonBlocks) == 0 {
+		return fmt.Errorf("no blocks in database")
+	}
+
+	for i, line := range jsonBlocks {
+		var b block.Block
+		if err := json.Unmarshal([]byte(line), &b); err != nil {
+			return fmt.Errorf("cannot unmarshal block %d: %w", i, err)
+		}
+		// TODO: link/hash checks, etc.
+		_ = b
+	}
+	return nil
+}
 
 func GetStateFromDisk(dataDir string) (*state.State, error) {
 	if !common.FileExists(dataDir + DB_FILE) {
@@ -59,28 +81,120 @@ func InitDataDirectory(dataDir string) error {
 
 		var g genesis.Genesis
 		if err := json.Unmarshal([]byte(genesisData), &g); err != nil {
-			return err
+			return fmt.Errorf("cannot unmarshal genesis: %w", err)
 		}
 
-		state := state.NewState(DB_FILE)
+		state := state.NewState()
 
 		for addr, bal := range g.Balances {
 			state.Balances[addr] = bal
 		}
 		sroot := state.ComputeStateRoot()
 		var zeroHash [32]byte
+
 		genesisBlock, err := block.NewBlock(zeroHash, sroot, 0, nil, nil)
 		if err != nil {
 			return fmt.Errorf("cannot create genesis block: %w", err)
 		}
-		encodeBlock, err := genesisBlock.Encode()
+		encodedBlock, err := genesisBlock.Encode()
 		if err != nil {
 			return fmt.Errorf("cannot encode genesis block: %w", err)
 		}
 
-		if err := os.WriteFile(dataDir+DB_FILE, encodeBlock, 0644); err != nil {
+		if err := os.WriteFile(dataDir+DB_FILE, encodedBlock, 0644); err != nil {
 			return fmt.Errorf("cannot write database file: %w", err)
 		}
+
+		if err := SaveAddressMap(dataDir+BALANCES_FILE, state.Balances); err != nil {
+			return fmt.Errorf("cannot save initial balances: %w", err)
+		}
+		if err := SaveAddressMap(dataDir+NOUNCES_FILE, state.Account2Nonce); err != nil {
+			return fmt.Errorf("cannot save initial nonces: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func LoadState(dataDir string) (*state.State, error) {
+	if !common.FileExists(dataDir + DB_FILE) {
+		return nil, fmt.Errorf("database file not found")
+	}
+
+	// Try snapshot files first
+	balances, err := GetAddressMap(dataDir + BALANCES_FILE)
+	if err != nil {
+		// if snapshot missing/corrupt, fall back to empty and rely on replay if you want
+		balances = make(map[address.Address]uint)
+	}
+	nonces, err := GetAddressMap(dataDir + NOUNCES_FILE)
+	if err != nil {
+		nonces = make(map[address.Address]uint)
+	}
+
+	// Determine tip hash & number from the block DB
+	f, err := os.Open(dataDir + DB_FILE)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open block DB file: %w", err)
+	}
+	defer f.Close()
+
+	var lastBlock block.Block
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(strings.TrimSpace(string(line))) == 0 {
+			continue
+		}
+		var b block.Block
+		if err := json.Unmarshal(line, &b); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal block: %w", err)
+		}
+		lastBlock = b
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error scanning block DB file: %w", err)
+	}
+
+	bhash, err := lastBlock.Hash()
+	if err != nil {
+		return nil, fmt.Errorf("cannot hash last block: %w", err)
+	}
+
+	st := state.NewStateWithData(
+		balances,
+		nonces,
+		bhash,
+		lastBlock.Header.Number,
+	)
+
+	return st, nil
+}
+
+// PersistState:
+// 1) asks State to produce a new block and update its tip,
+// 2) appends that block to DB,
+// 3) snapshots balances/nonces.
+func PersistState(dataDir string, s *state.State) error {
+	blk, err := s.Persist()
+	if err != nil {
+		return err
+	}
+
+	blkBytes, err := blk.Encode()
+	if err != nil {
+		return fmt.Errorf("cannot encode block: %w", err)
+	}
+
+	if err := AppendBlock(string(blkBytes)); err != nil {
+		return err
+	}
+
+	if err := SaveAddressMap(dataDir+BALANCES_FILE, s.Balances); err != nil {
+		return fmt.Errorf("cannot save balances: %w", err)
+	}
+	if err := SaveAddressMap(dataDir+NOUNCES_FILE, s.Account2Nonce); err != nil {
+		return fmt.Errorf("cannot save nonces: %w", err)
 	}
 
 	return nil

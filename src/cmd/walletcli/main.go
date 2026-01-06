@@ -55,6 +55,7 @@ func usage() {
 	fmt.Println("  import   - import wallet seed")
 	fmt.Println("  mnemonic-export  - export 24-word mnemonic")
 	fmt.Println("  mnemonic-import  - import 24-word mnemonic")
+	fmt.Println("  init     - initialize data directory")
 }
 
 func cmdCreate() {
